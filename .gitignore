@@ -1,7 +1,9 @@
-data/
+data/*
+!data/SNAPSHOT.json
 vendor/
 .venv/
 __pycache__/
 *.npz
 *.parquet
 .claude/
+build/

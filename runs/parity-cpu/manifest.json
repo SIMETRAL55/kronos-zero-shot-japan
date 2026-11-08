@@ -1,0 +1,15 @@
+{
+ "job": "parity",
+ "cfg": {},
+ "model_id": "NeoQuasar/Kronos-small",
+ "model_revision": "901c26c1332695a2a8f243eb2f37243a37bea320",
+ "tokenizer_id": "NeoQuasar/Kronos-Tokenizer-base",
+ "tokenizer_revision": "0e0117387f39004a9016484a186a908917e22426",
+ "device": "cpu",
+ "device_name": "cpu",
+ "torch": "2.15.0+cpu",
+ "input_sha256": "0e0aba46897be9a6f94fad11eb40ce44446952f5399b242642ad565dcffda57c",
+ "output_sha256": "78d9bad331ed1f690ddc3ffdc11e288c7451879bb7a72989660111c8c0d03616",
+ "n_windows": 3,
+ "seconds": 0.6
+}

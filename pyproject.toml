@@ -17,6 +17,7 @@ dependencies = [
     "safetensors>=0.4",
     "tqdm>=4.66",
     "pytest>=8",
+    "yfinance>=1.8.0",
 ]
 
 [tool.uv]
