@@ -13,7 +13,8 @@ from kx.signals import rank_signals  # noqa: E402
 from kx.stats import daily_rank_ic, nw_tstat  # noqa: E402
 
 out = ROOT / "runs" / "p4" / "out"
-z, m = np.load(out / "paths.npz"), json.loads((out / "manifest.json").read_text())
+# allow_pickle: the first P4 run saved dates/codes as object arrays (our own job output; fixed in remote/jobs.py)
+z, m = np.load(out / "paths.npz", allow_pickle=True), json.loads((out / "manifest.json").read_text())
 assert hashlib.sha256(np.ascontiguousarray(z["paths"]).tobytes()).hexdigest() == m["output_sha256"]
 dates = pd.to_datetime(z["dates"])
 pos = {d: i for i, d in enumerate(dates)}

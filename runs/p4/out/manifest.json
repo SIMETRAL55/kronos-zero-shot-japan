@@ -1,0 +1,26 @@
+{
+ "job": "p4",
+ "cfg": {
+  "n_names": 500,
+  "n_days": 340,
+  "n_dates": 40,
+  "n": 10,
+  "T": 0.6,
+  "top_p": 0.9,
+  "seed": 0,
+  "data_seed": 42,
+  "batch_rows": 4096
+ },
+ "model_id": "NeoQuasar/Kronos-small",
+ "model_revision": "901c26c1332695a2a8f243eb2f37243a37bea320",
+ "tokenizer_id": "NeoQuasar/Kronos-Tokenizer-base",
+ "tokenizer_revision": "0e0117387f39004a9016484a186a908917e22426",
+ "device": "cuda",
+ "device_name": "Tesla T4",
+ "torch": "2.11.0+cu130",
+ "input_sha256": "471b5cb778159d3303e339ccd63d46da9f2d30bf90115e8715458cc2f582b784",
+ "output_sha256": "5bd0f1abe27e20bda6e6e1af7c6f3183dfd81ba93b1d3ea6d222a6acaafa3a2f",
+ "n_windows": 20000,
+ "seconds": 3355.7,
+ "git_commit": "cadef28"
+}

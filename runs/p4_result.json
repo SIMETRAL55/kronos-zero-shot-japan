@@ -1,0 +1,10 @@
+{
+ "n_dates": 40,
+ "n_names": 500,
+ "mean_ic": -0.0012145068686927035,
+ "nw_t": -0.1833547696490995,
+ "pass_within_2se": true,
+ "device": "Tesla T4",
+ "seconds": 3355.7,
+ "output_sha256": "5bd0f1abe27e20bda6e6e1af7c6f3183dfd81ba93b1d3ea6d222a6acaafa3a2f"
+}

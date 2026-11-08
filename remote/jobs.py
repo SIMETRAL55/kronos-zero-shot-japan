@@ -32,7 +32,8 @@ def build_p4(cfg: dict):
             keys.append(f"{df.index[p]:%Y-%m-%d}|{code}")
     extras = {"open": np.stack([w["open"].to_numpy() for w in walks.values()], 1),
               "close": np.stack([w["close"].to_numpy() for w in walks.values()], 1),
-              "dates": np.array(walks["s0000"].index.strftime("%Y-%m-%d")), "codes": np.array(list(walks))}
+              "dates": np.array(walks["s0000"].index.strftime("%Y-%m-%d"), dtype=str),
+              "codes": np.array(list(walks), dtype=str)}
     return bars, xd, yd, keys, extras
 
 
