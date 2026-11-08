@@ -74,7 +74,7 @@ pytest; upstream Kronos at `67b630e` (fetched by a script, gitignored); J-Quants
   - `test_same_seed_same_forecast`: two `predict` calls on `vendor/Kronos/tests/data/regression_input.csv` (last 40
     rows, pred_len 12, seed 0) are `np.array_equal`.
 - [ ] **Step 4:** Implement `load_kronos`. Run `uv run pytest tests/test_kronos_env.py -v`. Expected: 2 passed.
-- [ ] **Step 5:** Run the upstream regression test (P2): `cd vendor/Kronos && uv run --project ../.. pytest tests/test_kronos_regression.py -v`.
+- [ ] **Step 5:** Run the upstream regression test (P2): `cd vendor/Kronos && PYTHONPATH=. uv run --project ../.. pytest tests/test_kronos_regression.py -v`.
   Expected: passed. Note the result for `HARNESS.md`.
 - [ ] **Step 6:** Commit `pyproject.toml uv.lock scripts/ kx/ tests/` with message `Add pinned Kronos environment (P1, P2)`.
 

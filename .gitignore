@@ -4,3 +4,4 @@ vendor/
 __pycache__/
 *.npz
 *.parquet
+.claude/
