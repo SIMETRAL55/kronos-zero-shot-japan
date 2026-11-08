@@ -85,19 +85,20 @@ BUILDERS = {"p4": build_p4, "parity": build_parity, "series": build_series, "npz
 KEEP = {"close": lambda p: p[..., 3], "close_h5_h12": lambda p: p[:, :, [4, 11], 3]}  # cut outputs to what H1 uses
 
 
-def run_multi(job: str, cfg: dict, out: Path) -> dict:
-    """Split rows [start, stop) across all visible GPUs (one process each), then merge into out/paths.npz."""
+def run_multi(job: str, cfg: dict, out: Path, device: str = "cuda", n_procs: int | None = None) -> dict:
+    """Split rows [start, stop) across all visible GPUs (one process each), then merge into out/paths.npz.
+    Each part's seed is cfg seed + its first row, so parts never share a random stream and reruns reproduce."""
     import os
     import subprocess
     import sys
-    n = max(torch.cuda.device_count(), 1)
+    n = n_procs or max(torch.cuda.device_count(), 1)
     edges = np.linspace(cfg["start"], cfg["stop"], n + 1).astype(int)
     procs = []
     for g in range(n):
-        part = dict(cfg, start=int(edges[g]), stop=int(edges[g + 1]))
+        part = dict(cfg, start=int(edges[g]), stop=int(edges[g + 1]), seed=int(cfg["seed"] + edges[g]))
         code = (f"import json,sys; sys.path.insert(0, {str(Path(__file__).resolve().parent.parent)!r}); "
                 f"from pathlib import Path; from remote.jobs import run; "
-                f"run({job!r}, json.loads({json.dumps(part)!r}), Path({str(out / f'part{g}')!r}), 'cuda')")
+                f"run({job!r}, json.loads({json.dumps(part)!r}), Path({str(out / f'part{g}')!r}), {device!r})")
         procs.append(subprocess.Popen([sys.executable, "-c", code], env={**os.environ, "CUDA_VISIBLE_DEVICES": str(g)}))
     if any(p.wait() for p in procs):
         raise RuntimeError("a GPU worker failed")

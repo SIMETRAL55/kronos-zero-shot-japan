@@ -47,6 +47,23 @@ Full test suite: `uv run pytest`, 45 passed.
 - Processing it in one's own private Kaggle session is not addressed explicitly. Lowest-exposure option: send only
   Kronos-normalised 40-bar windows with no issue codes, in a private kernel, deleted after the run. The user decides.
 
+## H1 data (PREREG Amendment 1: J-Quants Free plan)
+
+- **Coverage:** the plan reported 2024-08-16 to 2026-08-16. Fetching stopped at 2026-04-30, with the client refusing
+  any later date.
+- **Fetched:** prices for 415 trading days (2024-08-16 to 2026-04-30), and 355 daily listed-issue master snapshots
+  (2024-11-14 to 2026-04-30).
+- **Checksums:** all 773 data files are hashed in `data/SNAPSHOT.json`.
+- **Windows:** 170,613 windows on **343 forecast dates (2024-11-14 to 2026-04-13)**.
+  - The first date is the 61st trading day of Free-plan history.
+  - Median 497 names per date. 0 name-dates were dropped for gaps inside a 40-bar window.
+  - Built by `uv run python scripts/build_h1_windows.py`.
+- **What goes to the private Kaggle dataset:** only prices and date indices, never issue codes. The dataset is deleted
+  after the runs.
+- **Seeds:** each GPU worker uses the run seed plus its first row, so reruns reproduce.
+  `tests/test_run_multi.py` checks the split-and-merge path. This is deterministic, as §1 requires, but keyed by row
+  block rather than forecast date.
+
 ## Still open before H1 dev results
 
 - **§10 broker-cost check:** confirm or replace the 10 bp round-trip assumption from official broker pages. Done as an
