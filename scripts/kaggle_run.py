@@ -32,8 +32,11 @@ except ImportError:
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "einops==0.8.1"], check=True)
 sys.path.insert(0, str(root))
 import torch
-from remote.jobs import run
-m = run(JOB, CFG, Path("/kaggle/working/out"), "cuda" if torch.cuda.is_available() else "cpu")
+from remote.jobs import run, run_multi
+if CFG.get("multi_gpu") and torch.cuda.device_count() > 1:
+    m = run_multi(JOB, CFG, Path("/kaggle/working/out"))
+else:
+    m = run(JOB, CFG, Path("/kaggle/working/out"), "cuda" if torch.cuda.is_available() else "cpu")
 m["git_commit"] = COMMIT
 Path("/kaggle/working/out/manifest.json").write_text(json.dumps(m, indent=1))
 print(json.dumps(m))

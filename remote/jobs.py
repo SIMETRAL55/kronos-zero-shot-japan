@@ -68,7 +68,47 @@ def build_series(cfg: dict):
     return bars, xd, yd, keys, {}
 
 
-BUILDERS = {"p4": build_p4, "parity": build_parity, "series": build_series}
+def build_npz(cfg: dict):
+    """Windows from an uploaded npz (scripts/build_h1_windows.py); rows [start, stop) only. Keys are row numbers."""
+    z = np.load(cfg["input"])
+    dates, cal = pd.DatetimeIndex(z["dates"]), pd.DatetimeIndex(z["cal"])
+    lo, hi = cfg["start"], cfg["stop"]
+    bars, xd, yd = [], [], []
+    for b, ti, yi in zip(z["bars"][lo:hi], z["t_idx"][lo:hi], z["y_idx"][lo:hi]):
+        bars.append(pd.DataFrame(b, columns=COLS))
+        xd.append(dates[ti - 39:ti + 1])
+        yd.append(cal[yi:yi + 12])
+    return bars, xd, yd, [str(k) for k in range(lo, hi)], {}
+
+
+BUILDERS = {"p4": build_p4, "parity": build_parity, "series": build_series, "npz": build_npz}
+KEEP = {"close": lambda p: p[..., 3], "close_h5_h12": lambda p: p[:, :, [4, 11], 3]}  # cut outputs to what H1 uses
+
+
+def run_multi(job: str, cfg: dict, out: Path) -> dict:
+    """Split rows [start, stop) across all visible GPUs (one process each), then merge into out/paths.npz."""
+    import os
+    import subprocess
+    import sys
+    n = max(torch.cuda.device_count(), 1)
+    edges = np.linspace(cfg["start"], cfg["stop"], n + 1).astype(int)
+    procs = []
+    for g in range(n):
+        part = dict(cfg, start=int(edges[g]), stop=int(edges[g + 1]))
+        code = (f"import json,sys; sys.path.insert(0, {str(Path(__file__).resolve().parent.parent)!r}); "
+                f"from pathlib import Path; from remote.jobs import run; "
+                f"run({job!r}, json.loads({json.dumps(part)!r}), Path({str(out / f'part{g}')!r}), 'cuda')")
+        procs.append(subprocess.Popen([sys.executable, "-c", code], env={**os.environ, "CUDA_VISIBLE_DEVICES": str(g)}))
+    if any(p.wait() for p in procs):
+        raise RuntimeError("a GPU worker failed")
+    parts = [np.load(out / f"part{g}" / "paths.npz") for g in range(n)]
+    paths = np.concatenate([p["paths"] for p in parts])
+    np.savez_compressed(out / "paths.npz", paths=paths, keys=np.concatenate([p["keys"] for p in parts]))
+    metas = [json.loads((out / f"part{g}" / "manifest.json").read_text()) for g in range(n)]
+    manifest = {**metas[0], "cfg": cfg, "gpus": n, "output_sha256": _sha(paths), "n_windows": int(len(paths)),
+                "seconds": max(m["seconds"] for m in metas), "input_sha256": [m["input_sha256"] for m in metas]}
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
+    return manifest
 
 
 def run(job: str, cfg: dict, out: Path, device: str) -> dict:
@@ -87,6 +127,9 @@ def run(job: str, cfg: dict, out: Path, device: str) -> dict:
         paths = forecast_paths(tok, model, bars, xd, yd, T=cfg["T"], top_p=cfg["top_p"], n=cfg["n"],
                                seed=cfg["seed"], device=device, batch_rows=cfg.get("batch_rows", 2048))
     secs = time.time() - t0
+    if cfg.get("keep"):
+        paths = KEEP[cfg["keep"]](paths)
+        inputs = inputs[:, -1:, :]  # the last bar is enough downstream; full inputs live in the input npz
     np.savez_compressed(out / "paths.npz", paths=paths, keys=np.array(keys), inputs=inputs, **extras)
     manifest = {"job": job, "cfg": cfg, **meta, "device": device,
                 "device_name": torch.cuda.get_device_name(0) if device.startswith("cuda") else "cpu",
