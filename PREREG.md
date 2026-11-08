@@ -199,4 +199,22 @@ Then holdout data is fetched, forecasts are made once, and the one evaluation is
 
 ## Amendments
 
-None yet.
+### Amendment 1 (2026-11-08): H1 data from the J-Quants Free plan
+
+Made before any stock data has been fetched. The H2 results are known by now, but they say nothing about H1's stocks.
+
+The user chose a no-cost first run of H1. Per J-Quants' data specification (jpx-jquants.com/en/spec/data-spec), the Free
+plan gives the listed-issue master and daily prices with 2 years of history and a 12-week delay, over the API only, at
+5 requests per minute. The TOPIX index is not included.
+
+1. **Dev window for H1.** Forecast dates now start at the first trading day with at least 60 trading days of Free-plan
+   history, about mid-November 2024. They end, as before, at dates whose outcomes end by 2026-04-30. The exact first
+   date is recorded in `HARNESS.md` when the data is fetched. All pass rules are unchanged. The power figure (§4) is
+   computed on this shorter window.
+2. **B3 (12-1 momentum)** needs 252 days of history, so it is missing for most of the dev window. Missing values take
+   the median rank, as §4 already says. Its coverage is reported.
+3. **TOPIX** was only the secondary H2 series. H2 has stopped, so this has no effect.
+4. **Holdout.** The dates are unchanged. The Free plan has the full holdout (outcomes to 2026-10-31) from about
+   2027-01-23. Alternatively, one month of Light can be bought if H1 passes dev.
+5. **Later Light data.** If Light data is bought later, the dev pass/fail stays on this window. Extra earlier dates may
+   be reported only as supplementary.

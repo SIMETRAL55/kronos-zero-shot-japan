@@ -2,6 +2,7 @@
 
   uv run python scripts/fetch_dev_data.py nikkei      # Yahoo ^N225 (primary) + official CSV cross-check
   uv run python scripts/fetch_dev_data.py jquants     # needs JQUANTS_API_KEY in ~/.config/kronos-explore/jquants.env
+  uv run python scripts/fetch_dev_data.py jquants --free   # Free plan (PREREG Amendment 1), ~3 h at 5 req/min
 """
 import hashlib
 import json
@@ -38,15 +39,19 @@ def nikkei() -> None:
 def jquants() -> None:
     if not CRED.exists():
         sys.exit(f"No J-Quants key at {CRED}: add JQUANTS_API_KEY=... (mode 600) and re-run")
-    jq = JQuants()
-    days = trading_days(jq.calendar("2022-01-01", DEV_END))
-    jq.topix("2021-01-01", DEV_END)
+    free = "--free" in sys.argv  # PREREG Amendment 1: Free plan = 2 years, 12-week delay, 5 req/min, no TOPIX
+    jq = JQuants(min_interval=12.5 if free else 1.1)
+    days = trading_days(jq.calendar("2024-01-01" if free else "2022-01-01", DEV_END))
+    if not free:
+        jq.topix("2021-01-01", DEV_END)
     stock_days = days[days >= "2023-01-01"]
+    print(f"calendar {days[0]:%Y-%m-%d}..{days[-1]:%Y-%m-%d}; {len(stock_days)} bar days to fetch", flush=True)
     for i, d in enumerate(stock_days):
         jq.daily_bars(f"{d:%Y-%m-%d}")
         if i % 50 == 0:
             print(f"bars {i}/{len(stock_days)}", flush=True)
-    for d in days[days >= "2024-07-01"]:
+    first_forecast = days[60] if free else pd.Timestamp("2024-07-01")  # Free: needs 60 days of history first
+    for d in days[days >= first_forecast]:
         jq.master(f"{d:%Y-%m-%d}")
     print("J-Quants dev data fetched", flush=True)
 
