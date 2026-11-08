@@ -6,10 +6,12 @@
 """
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -41,7 +43,16 @@ def jquants() -> None:
         sys.exit(f"No J-Quants key at {CRED}: add JQUANTS_API_KEY=... (mode 600) and re-run")
     free = "--free" in sys.argv  # PREREG Amendment 1: Free plan = 2 years, 12-week delay, 5 req/min, no TOPIX
     jq = JQuants(min_interval=12.5 if free else 1.1)
-    days = trading_days(jq.calendar("2024-01-01" if free else "2022-01-01", DEV_END))
+    start = "2022-01-01"
+    try:
+        cal = jq.calendar(start, DEV_END)
+    except requests.HTTPError as e:  # plan window: "Your subscription covers the following dates: 2024-08-16 ~ ..."
+        m = re.search(r"covers the following dates: (\d{4}-\d{2}-\d{2})", e.response.text)
+        if not m:
+            raise
+        start = m.group(1)
+        cal = jq.calendar(start, DEV_END)
+    days = trading_days(cal)
     if not free:
         jq.topix("2021-01-01", DEV_END)
     stock_days = days[days >= "2023-01-01"]
