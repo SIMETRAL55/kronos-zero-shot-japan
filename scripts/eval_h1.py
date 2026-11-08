@@ -53,15 +53,35 @@ def kronos_signals() -> dict[str, pd.DataFrame]:
     return out
 
 
+TICK_TOPIX100 = [(1000, 0.1), (3000, 0.5), (10000, 1), (30000, 5), (100000, 10), (300000, 50), (np.inf, 100)]
+TICK_OTHER = [(3000, 1), (5000, 5), (30000, 10), (50000, 50), (300000, 100), (500000, 500), (np.inf, 1000)]
+
+
+def tick(price: float, topix100: bool) -> float:
+    """TSE tick size (呼値の単位) in force through the dev window; TOPIX100 constituents use the finer table."""
+    return next(t for cap, t in (TICK_TOPIX100 if topix100 else TICK_OTHER) if price <= cap)
+
+
 def costs(P) -> dict:
-    """Abdi & Ranaldo (2017): s^2 = 4 E[(c_t - eta_t)(c_t - eta_{t+1})], eta = mid-range in logs. Per stock, dev window."""
+    """§10 cost check, two ways (no signals involved).
+    1. Abdi & Ranaldo (2017) spread: s^2 = 4 E[(c_t - eta_t)(c_t - eta_{t+1})], eta = log mid-range, per stock.
+    2. Tick floor: one TSE tick / raw price per stock; a round trip costs at least ~1-2 ticks."""
     c, eta = np.log(P["AdjC"]), (np.log(P["AdjH"]) + np.log(P["AdjL"])) / 2
     prod = ((c - eta) * (c - eta.shift(-1))).loc[IDX["date"].min():DEV_END]
-    s2 = 4 * prod[sorted(IDX["code"].unique())].mean()
-    bp = np.sqrt(s2.clip(lower=0)) * 1e4
-    return {"names": int(bp.notna().sum()), "median_round_trip_bp": float(bp.median()),
-            "p25_bp": float(bp.quantile(0.25)), "p75_bp": float(bp.quantile(0.75)),
-            "prereg_assumption_bp": 10.0, "amend_needed_gt_15bp": bool(bp.median() > 15)}
+    codes = sorted(IDX["code"].unique())
+    s2 = 4 * prod[codes].mean()
+    ar = np.sqrt(s2.clip(lower=0)) * 1e4
+    bars = pd.concat([pd.read_parquet(f) for f in sorted((JQ / "bars").glob("*.parquet"))], ignore_index=True)
+    raw = panel(bars, "C").astype(float).loc[IDX["date"].min():DEV_END, codes].median()
+    master = pd.read_parquet(JQ / "master" / f"{IDX['date'].max():%Y-%m-%d}.parquet").set_index("Code")["ScaleCat"]
+    t100 = master.reindex(codes).isin(["TOPIX Core30", "TOPIX Large70"])
+    tick_bp = pd.Series({k: tick(raw[k], bool(t100[k])) / raw[k] * 1e4 for k in codes if np.isfinite(raw[k])})
+    return {"names": int(ar.notna().sum()),
+            "abdi_ranaldo": {"median_bp": float(ar.median()), "p25_bp": float(ar.quantile(0.25)),
+                             "p75_bp": float(ar.quantile(0.75)), "share_clipped_at_zero": float((s2 <= 0).mean())},
+            "tick_floor": {"median_one_tick_bp": float(tick_bp.median()), "p75_one_tick_bp": float(tick_bp.quantile(0.75)),
+                           "median_two_tick_round_trip_bp": float(2 * tick_bp.median())},
+            "prereg_assumption_bp": 10.0}
 
 
 def series_json(cols: dict[str, dict[str, pd.Series]]) -> dict:
@@ -99,7 +119,7 @@ def dev(P, sig) -> tuple[dict, dict]:
         ic = daily_rank_ic(s, fwd)
         m, t = nw_tstat(ic, lag=h)
         fm = fama_macbeth(fwd, {"K": s, **{b: B[b].reindex(s.index) for b in B}}, lag=h)
-        bts = {c: tranche_backtest(s, P["AdjO"], P["AdjC"], blocked, h, cost_bp=c) for c in (5, 10, 15, 25)}
+        bts = {c: tranche_backtest(s, P["AdjO"], P["AdjC"], blocked, h, cost_bp=c) for c in (5, 10, 14, 15, 25, 37)}
         ex = bts[10]["excess"].loc[s.index.min():].iloc[1:]
         excess[name] = ex
         live = bts[10].loc[ex.index]

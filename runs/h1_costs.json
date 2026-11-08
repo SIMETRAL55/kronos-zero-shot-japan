@@ -1,0 +1,15 @@
+{
+ "names": 517,
+ "abdi_ranaldo": {
+  "median_bp": 36.68295752714561,
+  "p25_bp": 0.0,
+  "p75_bp": 60.64464567427466,
+  "share_clipped_at_zero": 0.2765957446808511
+ },
+ "tick_floor": {
+  "median_one_tick_bp": 6.896551724137931,
+  "p75_one_tick_bp": 12.542330364981813,
+  "median_two_tick_round_trip_bp": 13.793103448275861
+ },
+ "prereg_assumption_bp": 10.0
+}

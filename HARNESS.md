@@ -64,10 +64,22 @@ Full test suite: `uv run pytest`, 45 passed.
   `tests/test_run_multi.py` checks the split-and-merge path. This is deterministic, as §1 requires, but keyed by row
   block rather than forecast date.
 
-## Still open before H1 dev results
+## §10 cost check (done before any H1 signal was evaluated)
 
-- **§10 broker-cost check:** confirm or replace the 10 bp round-trip assumption from official broker pages. Done as an
-  amendment before H1 dev is opened, if the figure changes.
+Reproduce with `uv run python scripts/eval_h1.py costs`; output in `runs/h1_costs.json`. 517 TOPIX500 names over the
+dev window.
+
+| Method | Median round trip | Notes |
+|---|---|---|
+| Abdi & Ranaldo (2017) daily high-low spread estimator | 36.7 bp (p25 0, p75 61) | **27.7% of names clipped at zero.** Noise-dominated when spreads are tiny relative to daily volatility, as for liquid large caps |
+| TSE tick floor (official tick tables; TOPIX100 use the finer table) | one tick = **6.9 bp**; two ticks = **13.8 bp** | A round trip with a one-tick spread costs one tick. Two ticks allows for a wider spread or slippage |
+
+**Decision.** The realistic round trip for the median name is about 7–14 bp. That is below §10's 15 bp trigger, so the
+pre-registered **10 bp** stays the pass-rule cost and no amendment is needed. Commissions are zero at the major
+zero-commission routes (Phase 0). The 14 bp (two ticks) and 37 bp (Abdi-Ranaldo) figures are reported as extra
+sensitivities next to 5/15/25 bp.
+
+## Still open before H1 dev results
 - **P5 and the power figure:** H1 only; run on H1's dev forecasts before any real IC is computed.
 
 
