@@ -64,9 +64,17 @@ def costs(P) -> dict:
             "prereg_assumption_bp": 10.0, "amend_needed_gt_15bp": bool(bp.median() > 15)}
 
 
-def p5(P, sig) -> dict:
+def series_json(cols: dict[str, dict[str, pd.Series]]) -> dict:
+    """Per-date columns for the dashboard (its DESIGN.md D1): one shared date axis, NaN/missing -> null."""
+    dates = sorted(set().union(*[s.index for v in cols.values() for s in v.values()]))
+    return {"dates": [str(pd.Timestamp(d).date()) for d in dates],
+            "variants": {k: {f: [None if not np.isfinite(x) else float(x) for x in s.reindex(dates).to_numpy(float)]
+                             for f, s in v.items()} for k, v in cols.items()}}
+
+
+def p5(P, sig) -> tuple[dict, dict]:
     rng = np.random.default_rng(0)
-    res = {}
+    res, cols = {}, {}
     for name, s in sig.items():
         h = int(name.split("_h")[1])
         fwd = forward_returns(P["AdjO"], P["AdjC"], h, DEV_END).reindex(s.index)
@@ -77,13 +85,14 @@ def p5(P, sig) -> dict:
         se = abs(mean / t) if t else float("nan")
         res[name] = {"mean_ic": mean, "nw_t": t, "pass_within_2se": abs(t) <= 2, "ic_sd": float(ic.std()),
                      "nw_se": se, "min_detectable_ic_t3": 3 * se, "n_days": len(ic)}
-    return res
+        cols[name] = {"shuffled_ic": ic}
+    return res, series_json(cols)
 
 
-def dev(P, sig) -> dict:
+def dev(P, sig) -> tuple[dict, dict]:
     B = baseline_signals(P["AdjC"])
     blocked = (P["UL"] == 1) & (P["AdjO"] >= P["AdjH"])  # opened limit-up: cannot buy at the open
-    rows, excess = {}, {}
+    rows, excess, cols = {}, {}, {}
     for name, s in sig.items():
         h = int(name.split("_h")[1])
         fwd = forward_returns(P["AdjO"], P["AdjC"], h, DEV_END).reindex(s.index)
@@ -93,6 +102,8 @@ def dev(P, sig) -> dict:
         bts = {c: tranche_backtest(s, P["AdjO"], P["AdjC"], blocked, h, cost_bp=c) for c in (5, 10, 15, 25)}
         ex = bts[10]["excess"].loc[s.index.min():].iloc[1:]
         excess[name] = ex
+        live = bts[10].loc[ex.index]
+        cols[name] = {"rank_ic": ic, "excess_10bp": ex, "portfolio_10bp": live["net"], "benchmark": live["bench"]}
         monthly = ic.groupby(ic.index.to_period("M")).mean()
         row = {"mean_ic": m, "ic_nw_t": t, "fm_t": float(fm.loc["K", "t"]), "fm_coef": float(fm.loc["K", "mean"]),
                "monthly_pos_share": float((monthly > 0).mean()), "n_days": len(ic),
@@ -111,13 +122,16 @@ def dev(P, sig) -> dict:
         rows[name]["pass"] = bool(rows[name]["fm_t"] >= 3 and rows[name]["dsr"] >= 0.95 and pbo <= 0.2
                                   and rows[name]["monthly_pos_share"] >= 0.6)
     b3 = B["B3"].reindex(sig["K1_h5"].index)[sig["K1_h5"].notna()]
-    return {"variants": rows, "pbo_all_variants": pbo, "b3_coverage": float(b3.notna().sum().sum() /
-                                                                            sig["K1_h5"].notna().sum().sum())}
+    return ({"variants": rows, "pbo_all_variants": pbo,
+             "b3_coverage": float(b3.notna().sum().sum() / sig["K1_h5"].notna().sum().sum())}, series_json(cols))
 
 
 if __name__ == "__main__":
     step = sys.argv[1]
     P = panels()
-    res = costs(P) if step == "costs" else p5(P, kronos_signals()) if step == "p5" else dev(P, kronos_signals())
+    res, series = (costs(P), None) if step == "costs" else p5(P, kronos_signals()) if step == "p5" \
+        else dev(P, kronos_signals())
     (ROOT / "runs" / f"h1_{step}.json").write_text(json.dumps(res, indent=1, default=float))
+    if series is not None:  # dashboard per-date series: commit together with h1_<step>.json, never earlier
+        (ROOT / "runs" / f"h1_{step}_series.json").write_text(json.dumps(series))
     print(json.dumps(res, indent=1, default=float))

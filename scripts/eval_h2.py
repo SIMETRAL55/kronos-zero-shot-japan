@@ -20,7 +20,7 @@ z, m = np.load(out / "paths.npz"), json.loads((out / "manifest.json").read_text(
 assert hashlib.sha256(np.ascontiguousarray(z["paths"]).tobytes()).hexdigest() == m["output_sha256"]
 close = pd.read_parquet(ROOT / "data" / "nikkei225_yahoo.parquet")["close"]
 dates = pd.to_datetime([k.split("|")[0] for k in z["keys"]])
-assert dates.max() + pd.Timedelta(days=0) <= close.index[-1]
+assert dates.max() <= close.index[-1]
 
 kv = pd.DataFrame([kronos_vol(z["paths"][i], close.loc[d]) for i, d in enumerate(dates)], index=dates)
 base = vol_baselines(close, str(dates[0].date())).reindex(dates)
@@ -46,10 +46,11 @@ def mz(f: pd.Series) -> dict:
 
 
 bt_close = close.loc[dates[0]:dates[-1]]
-sizing = {"kronos_" + best: summary(vol_target_backtest(bt_close, F[best])),
-          "HAR": summary(vol_target_backtest(bt_close, F["HAR"])),
-          # a tiny forecast variance pins the position at the cap, i.e. always exactly 1 contract
-          "constant_1": summary(vol_target_backtest(bt_close, pd.Series(1e-12, bt_close.index), max_contracts=1))}
+bts = {"kronos_" + best: vol_target_backtest(bt_close, F[best]),
+       "HAR": vol_target_backtest(bt_close, F["HAR"]),
+       # a tiny forecast variance pins the position at the cap, i.e. always exactly 1 contract
+       "constant_1": vol_target_backtest(bt_close, pd.Series(1e-12, bt_close.index), max_contracts=1)}
+sizing = {k: summary(v) for k, v in bts.items()}
 mdd_ok = abs(sizing["kronos_" + best]["max_drawdown"]) <= 1.2 * abs(sizing["HAR"]["max_drawdown"])
 split = {name: {k: float(loss[k][mask].mean()) for k in F}
          for name, mask in [("before_2024-11-05", dates < "2024-11-05"), ("from_2024-11-05", dates >= "2024-11-05")]}
@@ -60,4 +61,16 @@ res = {"run": run, "n_dates": len(dates), "first": str(dates[0].date()), "last":
                                           if k != "cfg"} | {"cfg": {k: v for k, v in m["cfg"].items() if k != "csv"}},
        "pass": bool(dm[best]["p_holm"] < 0.05 and dm[best]["mean_diff"] < 0 and mdd_ok)}
 (ROOT / "runs" / f"{run}_h2_result.json").write_text(json.dumps(res, indent=1, default=float))
+
+
+def col(s: pd.Series) -> list:
+    """Per-date column for the dashboard (DESIGN.md D1): aligned to `dates`, NaN -> null."""
+    return [None if not np.isfinite(x) else float(x) for x in s.reindex(dates).to_numpy(float)]
+
+
+series = {"run": run, "dates": [str(d.date()) for d in dates], "rv12": col(rv),
+          "forecast": {k: col(F[k]) for k in F}, "qlike": {k: col(loss[k]) for k in loss},
+          "sizing": {k: {"contracts": col(b["contracts"]), "net_yen": col(b["net"]), "equity_yen": col(b["equity"])}
+                     for k, b in bts.items()}}
+(ROOT / "runs" / f"{run}_series.json").write_text(json.dumps(series))
 print(json.dumps(res, indent=1, default=float))
