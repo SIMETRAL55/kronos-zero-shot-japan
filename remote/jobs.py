@@ -48,12 +48,31 @@ def build_parity(cfg: dict):
     return bars, xd, yd, keys, {}
 
 
-BUILDERS = {"p4": build_p4, "parity": build_parity}
+def build_series(cfg: dict):
+    """One index series (CSV text: date,open,high,low,close). Forecast dates t >= first whose t+12 <= last_outcome."""
+    import io
+    df = pd.read_csv(io.StringIO(cfg["csv"]), parse_dates=["date"], index_col="date").sort_index()
+    df["volume"], df["amount"] = 0.0, 0.0  # indices: OHLC only (PREREG §1)
+    last = df.index.searchsorted(pd.Timestamp(cfg["last_outcome"]), side="right") - 1
+    bars, xd, yd, keys = [], [], [], []
+    for p in range(39, last - 11):
+        t = df.index[p]
+        if t < pd.Timestamp(cfg["first"]):
+            continue
+        x = df.iloc[p - 39:p + 1]
+        bars.append(x[COLS].reset_index(drop=True))
+        xd.append(pd.DatetimeIndex(x.index))
+        yd.append(pd.DatetimeIndex(df.index[p + 1:p + 13]))
+        keys.append(f"{t:%Y-%m-%d}|{cfg['name']}")
+    return bars, xd, yd, keys, {}
+
+
+BUILDERS = {"p4": build_p4, "parity": build_parity, "series": build_series}
 
 
 def run(job: str, cfg: dict, out: Path, device: str) -> dict:
     out.mkdir(parents=True, exist_ok=True)
-    bars, xd, yd, keys, extras = BUILDERS[job](cfg)
+    bars, xd, yd, keys, extras = BUILDERS[cfg.get("builder", job)](cfg)
     tok, model, meta = load_kronos(device=device)
     inputs = np.stack([b.to_numpy(np.float32) for b in bars])
     t0 = time.time()
