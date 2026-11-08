@@ -68,9 +68,22 @@ def build_series(cfg: dict):
     return bars, xd, yd, keys, {}
 
 
+def _load_input(path: str) -> dict:
+    """The windows npz at `path`; on Kaggle, wherever the dataset is mounted (or unpacked into .npy files)."""
+    p = Path(path)
+    if p.exists():
+        return dict(np.load(p))
+    root = Path("/kaggle/input")
+    hit = next(root.rglob("windows.npz"), None)
+    if hit:
+        return dict(np.load(hit))
+    d = next(root.rglob("bars.npy")).parent
+    return {k: np.load(d / f"{k}.npy") for k in ("bars", "t_idx", "y_idx", "dates", "cal")}
+
+
 def build_npz(cfg: dict):
     """Windows from an uploaded npz (scripts/build_h1_windows.py); rows [start, stop) only. Keys are row numbers."""
-    z = np.load(cfg["input"])
+    z = _load_input(cfg["input"])
     dates, cal = pd.DatetimeIndex(z["dates"]), pd.DatetimeIndex(z["cal"])
     lo, hi = cfg["start"], cfg["stop"]
     bars, xd, yd = [], [], []

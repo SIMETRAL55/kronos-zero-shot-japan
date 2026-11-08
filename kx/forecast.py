@@ -18,13 +18,13 @@ def forecast_paths(tokenizer, model, bars: list[pd.DataFrame], x_dates: list[pd.
     row is one independent path; torch.manual_seed(seed + chunk) makes each chunk reproducible.
     """
     pred = make_predictor(tokenizer, model, device)
-    rows = [(b[COLS], pd.Series(x), pd.Series(y)) for b, x, y in zip(bars, x_dates, y_dates) for _ in range(n)]
-    out = []
-    for chunk, start in enumerate(range(0, len(rows), batch_rows)):
-        part = rows[start:start + batch_rows]
+    base = [(b[COLS], pd.Series(x), pd.Series(y)) for b, x, y in zip(bars, x_dates, y_dates)]  # once per series
+    total, out = len(base) * n, []
+    for chunk, start in enumerate(range(0, total, batch_rows)):
+        ids = [i // n for i in range(start, min(start + batch_rows, total))]  # series-major, path-minor rows
         torch.manual_seed(seed + chunk)
         with torch.inference_mode():
-            dfs = pred.predict_batch([r[0] for r in part], [r[1] for r in part], [r[2] for r in part],
+            dfs = pred.predict_batch([base[i][0] for i in ids], [base[i][1] for i in ids], [base[i][2] for i in ids],
                                      pred_len=PRED_LEN, T=T, top_k=0, top_p=top_p, sample_count=1, verbose=False)
         out.extend(d[COLS].to_numpy(np.float32) for d in dfs)
     return np.stack(out).reshape(len(bars), n, PRED_LEN, len(COLS))
