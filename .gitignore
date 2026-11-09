@@ -7,3 +7,6 @@ __pycache__/
 *.parquet
 .claude/
 build/
+runs/*/*.log
+runs/*/out/part*/
+runs/*-cpu/
