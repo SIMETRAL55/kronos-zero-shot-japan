@@ -111,8 +111,13 @@ Reproduce with `uv run python scripts/eval_h1.py p5` and `... p5diag`. Outputs: 
 stock-level component stays inside the real ICs and portfolio returns, as it would for a real portfolio. The power
 figure is reported both ways.
 
-## Still open before H1 dev results
-- **P5 and the power figure:** H1 only; run on H1's dev forecasts before any real IC is computed.
+## Closed
+
+- **Done before the H1 dev results:** the §10 cost check (`4a40012`) and P5 with its power figure (`b7999eb`).
+- **H1 dev results:** `f51931c`. No variant passes, so H1 stops per §8.
+- **Cleanup (2026-11-09):** the private Kaggle dataset `<kaggle-user>/kronos-h1-dev` is deleted.
+  - The private notebooks `kronos-eval-*` still hold forecast outputs: numbers only, no issue codes.
+  - The J-Quants data stays only in this machine's `data/`.
 
 
 ## P4, part 1: pull-to-mean bias record (no pass rule)
