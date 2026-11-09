@@ -1,0 +1,35 @@
+{
+ "job": "h1s2c",
+ "cfg": {
+  "builder": "npz",
+  "input": "/kaggle/input/kronos-h1-dev/windows.npz",
+  "start": 85306,
+  "stop": 127959,
+  "T": 1.0,
+  "top_p": 1.0,
+  "n": 50,
+  "seed": 1000000,
+  "batch_rows": 4096,
+  "keep": "close_h5_h12",
+  "multi_gpu": true,
+  "datasets": [
+   "<kaggle-user>/kronos-h1-dev"
+  ]
+ },
+ "model_id": "NeoQuasar/Kronos-small",
+ "model_revision": "901c26c1332695a2a8f243eb2f37243a37bea320",
+ "tokenizer_id": "NeoQuasar/Kronos-Tokenizer-base",
+ "tokenizer_revision": "0e0117387f39004a9016484a186a908917e22426",
+ "device": "cuda",
+ "device_name": "Tesla T4",
+ "torch": "2.11.0+cu130",
+ "input_sha256": [
+  "35be8b59d53122a1758f6224a1d87b774804420ae25305d44fca9f2649c7af2b",
+  "8cc50d84d8a38da66f987beb416a1273b381a09f1ff91200d08b370a60f97450"
+ ],
+ "output_sha256": "d50b2edcf4bf0750d75be93353a0b31990c79a50d0bfbf1c3a325df548ecc50a",
+ "n_windows": 42653,
+ "seconds": 18037.7,
+ "gpus": 2,
+ "git_commit": "9fdb6aa"
+}
