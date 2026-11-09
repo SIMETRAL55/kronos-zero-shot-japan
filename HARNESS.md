@@ -79,6 +79,38 @@ pre-registered **10 bp** stays the pass-rule cost and no amendment is needed. Co
 zero-commission routes (Phase 0). The 14 bp (two ticks) and 37 bp (Abdi-Ranaldo) figures are reported as extra
 sensitivities next to 5/15/25 bp.
 
+## P5 and the power figure (committed before any real H1 IC was computed)
+
+Reproduce with `uv run python scripts/eval_h1.py p5` and `... p5diag`. Outputs: `runs/h1_p5.json`,
+`runs/h1_p5_series.json`, `runs/h1_p5diag.json`.
+
+**P5 as pre-registered (pair each date's signals with a random other date's returns): fails on 5 of 6 variants.**
+
+| Variant | Date-shuffled mean IC | Newey-West t | Within ±2 SE? | Power: min. detectable IC (t = 3) |
+|---|---|---|---|---|
+| K1 h5 | +0.0047 | +0.80 | yes | 0.018 |
+| K2 h5 | −0.0146 | −2.08 | no | 0.021 |
+| K3 h5 | −0.0232 | −3.96 | no | 0.018 |
+| K1 h12 | −0.0239 | −3.10 | no | 0.023 |
+| K2 h12 | −0.0438 | −3.90 | no | 0.034 |
+| K3 h12 | −0.0351 | −4.35 | no | 0.024 |
+
+**Diagnosis (`p5diag`; it never pairs a signal with its own date's returns):**
+
+1. **A true null for the pipeline passes on all 6 variants.** Signals were permuted across stocks within each date, and
+   every IC is within ±2 SE (t from −0.70 to +0.94). So the code does not leak, and it scores pure noise as zero.
+2. **Both inputs persist at the stock level.**
+   - Signal rank persistence over 20 days: −0.04 to +0.14 (K2 and K3 at h12 are the most persistent).
+   - Forward-return rank persistence across non-overlapping horizons: +0.013 (h5) and +0.023 (h12).
+   - Shuffling dates keeps each stock's identity, so stock-level traits (volatility, for example) survive the shuffle.
+     That is what pushes the date-shuffled IC away from zero. It is a property of this data, not a bug, and it means
+     the date shuffle is not a valid null here.
+3. **Power with the true null:** minimum detectable IC 0.007–0.009 at t = 3.
+
+**Decision.** §6's stop rule covers P1–P4 and P6, not P5, so the evaluation proceeds exactly as pre-registered. This
+stock-level component stays inside the real ICs and portfolio returns, as it would for a real portfolio. The power
+figure is reported both ways.
+
 ## Still open before H1 dev results
 - **P5 and the power figure:** H1 only; run on H1's dev forecasts before any real IC is computed.
 

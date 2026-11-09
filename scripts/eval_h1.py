@@ -109,6 +109,29 @@ def p5(P, sig) -> tuple[dict, dict]:
     return res, series_json(cols)
 
 
+def p5diag(P, sig) -> tuple[dict, None]:
+    """Why the date-shuffled P5 is not null (no same-date signal/return pair is ever correlated here):
+    1. stock-shuffled placebo: within each date, signals are permuted across stocks -> a true null for the pipeline;
+    2. persistence of signals alone (t vs t+20) and of forward returns alone (t vs t+2h, non-overlapping)."""
+    rng = np.random.default_rng(1)
+    res = {}
+    for name, s in sig.items():
+        h = int(name.split("_h")[1])
+        fwd = forward_returns(P["AdjO"], P["AdjC"], h, DEV_END).reindex(s.index)
+        perm = s.apply(lambda row: pd.Series(rng.permutation(row.to_numpy()), row.index), axis=1)
+        ic = daily_rank_ic(perm, fwd)
+        mean, t = nw_tstat(ic, lag=h)
+        se = abs(mean / t) if t else float("nan")
+        rs = s.rank(axis=1)
+        sig_pers = pd.Series([rs.iloc[i].corr(rs.iloc[i + 20]) for i in range(len(rs) - 20)]).mean()
+        rf = fwd.reindex(columns=s.columns).rank(axis=1)
+        ret_pers = pd.Series([rf.iloc[i].corr(rf.iloc[i + 2 * h]) for i in range(len(rf) - 2 * h)]).mean()
+        res[name] = {"stock_shuffled_mean_ic": mean, "stock_shuffled_nw_t": t, "pass_within_2se": abs(t) <= 2,
+                     "min_detectable_ic_t3": 3 * se, "signal_rank_persistence_20d": float(sig_pers),
+                     "return_rank_persistence_2h": float(ret_pers)}
+    return res, None
+
+
 def dev(P, sig) -> tuple[dict, dict]:
     B = baseline_signals(P["AdjC"])
     blocked = (P["UL"] == 1) & (P["AdjO"] >= P["AdjH"])  # opened limit-up: cannot buy at the open
@@ -150,7 +173,7 @@ if __name__ == "__main__":
     step = sys.argv[1]
     P = panels()
     res, series = (costs(P), None) if step == "costs" else p5(P, kronos_signals()) if step == "p5" \
-        else dev(P, kronos_signals())
+        else p5diag(P, kronos_signals()) if step == "p5diag" else dev(P, kronos_signals())
     (ROOT / "runs" / f"h1_{step}.json").write_text(json.dumps(res, indent=1, default=float))
     if series is not None:  # dashboard per-date series: commit together with h1_<step>.json, never earlier
         (ROOT / "runs" / f"h1_{step}_series.json").write_text(json.dumps(series))
