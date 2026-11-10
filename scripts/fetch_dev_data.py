@@ -55,13 +55,16 @@ def jquants() -> None:
     days = trading_days(cal)
     if not free:
         jq.topix("2021-01-01", DEV_END)
-    stock_days = days[days >= "2023-01-01"]
+    # --start YYYY-MM-DD: first price day to fetch (2024-08-16 reproduces the published Free-plan run on a paid plan)
+    first_bar = sys.argv[sys.argv.index("--start") + 1] if "--start" in sys.argv else "2023-01-01"
+    stock_days = days[days >= first_bar]
     print(f"calendar {days[0]:%Y-%m-%d}..{days[-1]:%Y-%m-%d}; {len(stock_days)} bar days to fetch", flush=True)
     for i, d in enumerate(stock_days):
         jq.daily_bars(f"{d:%Y-%m-%d}")
         if i % 50 == 0:
             print(f"bars {i}/{len(stock_days)}", flush=True)
-    first_forecast = days[60] if free else pd.Timestamp("2024-07-01")  # Free: needs 60 days of history first
+    # forecasts need 60 trading days of price history first (PREREG §2), and never start before 2024-07-01 (§3)
+    first_forecast = max(stock_days[60], pd.Timestamp("2024-07-01"))
     for d in days[days >= first_forecast]:
         jq.master(f"{d:%Y-%m-%d}")
     print("J-Quants dev data fetched", flush=True)

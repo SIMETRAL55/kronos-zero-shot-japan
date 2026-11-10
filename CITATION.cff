@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this study or its code, please cite it as below."
+title: "Kronos, tested in Japan: a pre-registered evaluation of a candlestick foundation model on TOPIX500 ranking and Nikkei 225 volatility"
+authors:
+  - family-names: Shaikh
+    given-names: Wasim
+date-released: 2026-11-10
+version: 1.0.0
+license: MIT
+repository-code: "https://github.com/SIMETRAL55/kronos-zero-shot-japan"
+url: "https://simetral55.github.io/kronos-zero-shot-japan/"
+keywords:
+  - foundation models
+  - financial forecasting
+  - pre-registration
+  - backtesting
+  - Japanese equities
+  - volatility forecasting
+references:
+  - type: article
+    title: "Kronos: A Foundation Model for the Language of Financial Markets"
+    authors:
+      - family-names: Shi
+        given-names: Yu
+      - family-names: Fu
+        given-names: Zongliang
+      - family-names: Chen
+        given-names: Shuo
+      - family-names: Zhao
+        given-names: Bohan
+      - family-names: Xu
+        given-names: Wei
+      - family-names: Zhang
+        given-names: Changshui
+      - family-names: Li
+        given-names: Jian
+    year: 2025
+    url: "https://arxiv.org/abs/2508.02739"

@@ -6,12 +6,13 @@
   uv run python scripts/kaggle_run.py local <job> '<cfg json>'  # same job on this CPU, into runs/<job>-cpu/
 """
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-USER = "<kaggle-user>"
+USER = os.environ.get("KAGGLE_USERNAME", "")  # your Kaggle username; the kernels and dataset are created under it
 KAGGLE = ["uvx", "--from", "kaggle", "--with", "six", "kaggle"]
 BUNDLE = ["kx/__init__.py", "kx/kronos_env.py", "kx/forecast.py", "kx/synthetic.py", "remote/__init__.py",
           "remote/jobs.py", "scripts/fetch_kronos.sh"]
@@ -48,6 +49,8 @@ def slug(job: str) -> str:
 
 
 def push(job: str, cfg: dict) -> None:
+    if not USER:
+        sys.exit("Set KAGGLE_USERNAME to your Kaggle username first (export KAGGLE_USERNAME=...).")
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                             text=True).stdout.strip()
     files = {rel: (ROOT / rel).read_text() for rel in BUNDLE}
@@ -63,6 +66,8 @@ def push(job: str, cfg: dict) -> None:
 
 def main() -> None:
     cmd, job = sys.argv[1], sys.argv[2]
+    if cmd != "local" and not USER:
+        sys.exit("Set KAGGLE_USERNAME to your Kaggle username first (export KAGGLE_USERNAME=...).")
     if cmd == "push":
         push(job, json.loads(sys.argv[3]))
     elif cmd == "status":

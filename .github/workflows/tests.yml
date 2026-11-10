@@ -1,0 +1,21 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install the pinned environment
+        run: uv sync --python 3.12
+      - name: Fetch Kronos at the pre-registered commit
+        run: bash scripts/fetch_kronos.sh
+      - name: Run the test suite (statistics, signals, backtests, placebos, Kronos inference on CPU)
+        run: uv run pytest -q
+      - name: Upstream Kronos regression test (P2)
+        working-directory: vendor/Kronos
+        run: PYTHONPATH=. uv run --project ../.. pytest -q tests/test_kronos_regression.py

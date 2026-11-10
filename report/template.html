@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kronos, Tested in Japan</title>
+<meta name="description" content="A pre-registered test of the Kronos foundation model on Japanese markets: what it does, how we tested it, and why it failed both tests.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column of numbered stages; each stage pairs a plain-words claim with the live evidence for it. */
+:root{
+  --bg:#e8edef; --panel:#f8fafa; --panel-2:#eef2f4; --ink:#13202b; --ink-2:#3b4a56; --muted:#5f6e79; --rule:#d0d8dd;
+  --accent:#5547c8; --accent-ink:#ffffff;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --truth:#13202b; --hist:#7b8892;
+  --good:#0a8f0a; --bad:#c83434; --wait:#a86f00;
+  --font-display:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;
+  --font-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-data:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d141b; --panel:#151e27; --panel-2:#1b2631; --ink:#e4ebef; --ink-2:#b5c1c9; --muted:#8c9ba6; --rule:#29353f;
+  --accent:#9c92ee; --accent-ink:#0d141b; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --truth:#e4ebef; --hist:#7f8d98;
+  --good:#2fb52f; --bad:#e25b5b; --wait:#e0a21c; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0d141b; --panel:#151e27; --panel-2:#1b2631; --ink:#e4ebef; --ink-2:#b5c1c9; --muted:#8c9ba6; --rule:#29353f;
+  --accent:#9c92ee; --accent-ink:#0d141b; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --truth:#e4ebef; --hist:#7f8d98;
+  --good:#2fb52f; --bad:#e25b5b; --wait:#e0a21c; color-scheme:dark }
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1040px;margin-inline:auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;letter-spacing:-0.01em}
+h2{font-size:clamp(1.45rem,3vw,1.9rem);font-weight:700}
+h3{font-size:1.05rem;font-weight:600;font-family:var(--font-body)}
+p{margin:0;max-width:65ch;color:var(--ink-2)}
+.lede{font-size:1.15rem;color:var(--ink-2)}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--font-data);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+a{color:var(--accent)}
+button,input{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:18px;flex-wrap:wrap}
+.topbar a{font-size:.9rem}
+header.hero{display:grid;gap:18px;padding-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.85rem;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+.chip b{font-family:var(--font-data);font-weight:600}
+.chip.good{border-color:color-mix(in oklab,var(--good) 45%,var(--rule));background:color-mix(in oklab,var(--good) 12%,var(--panel))}
+.chip.bad{border-color:color-mix(in oklab,var(--bad) 45%,var(--rule));background:color-mix(in oklab,var(--bad) 12%,var(--panel))}
+.mark{font-family:var(--font-data);font-weight:600}
+.good .mark{color:var(--good)} .bad .mark{color:var(--bad)}
+section{display:grid;gap:20px}
+.stage{display:flex;align-items:baseline;gap:14px}
+.stage .n{font-family:var(--font-data);color:var(--accent);font-weight:600;font-size:.95rem}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px;min-width:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.cols>*{min-width:0}
+.note{font-size:.9rem;color:var(--muted)}
+.verdict{border-left:4px solid var(--bad);padding:10px 14px;background:color-mix(in oklab,var(--bad) 7%,var(--panel));border-radius:0 8px 8px 0}
+.verdict.ok{border-left-color:var(--good);background:color-mix(in oklab,var(--good) 7%,var(--panel))}
+.verdict p{color:var(--ink)}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85rem;color:var(--ink-2);margin-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:.8rem;box-shadow:0 4px 14px color-mix(in oklab,var(--ink) 14%,transparent);min-width:150px;z-index:5}
+.tip .row{display:flex;justify-content:space-between;gap:12px}
+.tip .k{color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.toggles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.tg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--panel-2);color:var(--ink);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:.85rem}
+.tg[aria-pressed="false"]{opacity:.55}
+.tg[aria-pressed="false"] .sw{background:var(--muted)!important}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+.btn{border:1px solid var(--rule);background:var(--panel-2);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
+.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.ro{background:var(--panel-2);border-radius:8px;padding:10px 12px}
+.ro .v{font-family:var(--font-data);font-size:1.25rem;font-weight:600}
+.ro .l{font-size:.8rem;color:var(--muted)}
+.flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;list-style:none;padding:0;margin:0}
+.flow button{width:100%;height:100%;text-align:left;border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px;cursor:pointer;display:grid;gap:4px;align-content:start}
+.flow button[aria-selected="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.flow .fn{font-family:var(--font-data);font-size:.75rem;color:var(--muted)}
+.flow .ft{font-weight:600;font-size:.92rem;line-height:1.25}
+.flow .fs{font-size:.78rem}
+@media (max-width:760px){ .flow{grid-template-columns:repeat(2,minmax(0,1fr))} }
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule)}
+td.num,th.num{text-align:right}
+.tablewrap{overflow-x:auto}
+details{border-top:1px solid var(--rule);padding-top:8px}
+summary{cursor:pointer;color:var(--accent);font-size:.9rem}
+pre{background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:12px;overflow-x:auto;margin:0;font-family:var(--font-data);font-size:.82rem;line-height:1.5}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:14px;counter-reset:s}
+.steps li{display:grid;gap:6px}
+.steps li>b{font-size:.98rem}
+dl.gloss{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 18px;margin:0}
+dl.gloss dt{font-weight:600}
+dl.gloss dd{margin:0;color:var(--ink-2)}
+@media (max-width:600px){ dl.gloss{grid-template-columns:1fr} dl.gloss dd{margin-bottom:6px} }
+footer{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+  <span class="eyebrow">Pre-registered study · November 2026</span>
+  <span style="display:flex;gap:12px;align-items:center">
+    <a href="https://github.com/SIMETRAL55/kronos-zero-shot-japan">Code and data on GitHub</a>
+    <button class="btn" id="themeBtn" aria-label="Switch colour theme">Theme: auto</button>
+  </span>
+</div>
+
+<header class="hero">
+  <h1>We gave an AI chart reader a fair exam on Japanese markets. It failed both tests.</h1>
+  <p class="lede">Kronos is an open-source foundation model trained on billions of candlesticks. We asked two practical questions: can it tell which Tokyo stocks will beat the others, and can it warn when the Nikkei is about to get rough? We wrote the rules down before looking at any result, tested it only on months it had never seen, and made it beat simple free rules after trading costs. It did not.</p>
+  <div class="chips">
+    <span class="chip good"><span class="mark">✓</span>Rules locked <b>before</b> any result</span>
+    <span class="chip good"><span class="mark">✓</span>Unseen data only <b>Jul 2024 – Apr 2026</b></span>
+    <span class="chip bad"><span class="mark">✕</span>Volatility forecasting <b>failed</b></span>
+    <span class="chip bad"><span class="mark">✕</span>Stock picking <b>failed</b></span>
+  </div>
+</header>
+
+<section id="what">
+  <div class="stage"><span class="n">1</span><h2>What Kronos does</h2></div>
+  <p>Kronos reads the last 40 daily candles and imagines many possible next 12 days, like a weather forecaster drawing a fan of possible futures. These are real forecasts it made for the Nikkei 225. It opens on 2 August 2024, the Friday before the market's worst day in decades. Slide through the dates and compare its fan with what happened.</p>
+  <div class="panel">
+    <div class="legend" id="fanLegend"></div>
+    <div class="chart" id="fan"></div>
+    <div class="ctrl">
+      <button class="btn" id="prevEx" aria-label="Previous forecast">◀</button>
+      <button class="btn primary" id="playEx">Play</button>
+      <button class="btn" id="nextEx" aria-label="Next forecast">▶</button>
+      <input type="range" id="exSlider" min="0" max="0" value="0" aria-label="Forecast date">
+      <span class="num" id="exDate"></span>
+    </div>
+    <div class="readouts" id="fanRead"></div>
+  </div>
+</section>
+
+<section id="exam">
+  <div class="stage"><span class="n">2</span><h2>How the exam works</h2></div>
+  <p>A model can look brilliant on data it has already memorised, and a test can be quietly bent after the fact. We guarded against both. Every rule and pass mark went into <a href="https://github.com/SIMETRAL55/kronos-zero-shot-japan/blob/main/PREREG.md">PREREG.md</a>, committed before any test data was downloaded. Kronos learned from data up to June 2024, so every test uses later months. A final stretch of months stayed sealed, to be opened only if Kronos passed.</p>
+  <div class="panel">
+    <h3>The project, step by step</h3>
+    <p class="note">Tap a step to read what happened in it.</p>
+    <ol class="flow" id="flow" role="tablist" aria-label="Project steps"></ol>
+    <div id="flowDetail" role="tabpanel" style="margin-top:12px"></div>
+  </div>
+  <div class="panel">
+    <h3>Which months are used for what</h3>
+    <p class="note">Hover or tap a bar.</p>
+    <div class="chart" id="timeline"></div>
+    <p class="note" id="tlNote">&nbsp;</p>
+  </div>
+</section>
+
+<section id="checks">
+  <div class="stage"><span class="n">3</span><h2>First, we tested the tester</h2></div>
+  <p>A broken exam can make a bad student look good. Before grading Kronos, we checked the grading code on cases where the right answer is known in advance.</p>
+  <div class="cols">
+    <div class="panel">
+      <h3>Does it find signals only when they exist?</h3>
+      <p class="note">A score of 0 means no predictive power. Whiskers show the margin of error.</p>
+      <div class="chart" id="checkChart"></div>
+      <div class="verdict ok"><p><b>Passed.</b> It found nothing in random fake prices, and found a hidden signal of 0.05 when we planted one.</p></div>
+    </div>
+    <div class="panel">
+      <h3>What does one trade really cost?</h3>
+      <p class="note">Round trip for a large Japanese stock, in basis points (1 bp = 0.01%).</p>
+      <div class="chart" id="costChart"></div>
+      <div class="verdict ok"><p><b>10 bp kept.</b> Tokyo's minimum price steps put a realistic round trip at 7 to 14 bp, under the 15 bp line that would have forced a change.</p></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>The wrinkle we found and kept</h3>
+    <p class="note">Scrambling which stock gets which signal gave zero, as it should. Scrambling which day gets which returns did not: some stocks stay strong or weak for months, and that pattern survives a date shuffle. We recorded this before grading and changed no rule.</p>
+    <div class="legend" id="p5Legend"></div>
+    <div class="chart" id="p5Chart"></div>
+  </div>
+</section>
+
+<section id="test1">
+  <div class="stage"><span class="n">4</span><h2>Test 1: can it predict how rough the market gets?</h2></div>
+  <p>If Kronos could see a storm coming, a trader could bet smaller before it hits. We compared its 12-day volatility forecasts for the Nikkei with three textbook formulas over 435 trading days.</p>
+  <div class="panel">
+    <h3>Predicted vs actual swings, 12 days ahead</h3>
+    <div class="toggles" id="volToggles"></div>
+    <div class="chart" id="volChart"></div>
+    <p class="note">Yearly volatility in %. Higher means rougher. Hover to read any day.</p>
+  </div>
+  <div class="cols">
+    <div class="panel">
+      <h3>Scoreboard: lower is better</h3>
+      <p class="note">Average forecast error (QLIKE). It punishes missing a storm more than a false alarm.</p>
+      <div class="chart" id="scoreChart"></div>
+    </div>
+    <div class="panel">
+      <h3>Betting with each forecast</h3>
+      <p class="note">¥1,000,000 in Nikkei micro futures, sized by each forecast. Profit in thousands of yen.</p>
+      <div class="legend" id="eqLegend"></div>
+      <div class="chart" id="eqChart"></div>
+    </div>
+  </div>
+  <div class="verdict"><p><b>Failed.</b> Kronos lost to every simple formula. It kept underestimating storms, so sizing by it took bigger bets and the deepest drop (−20.5% against −15.4%). The extra profit came from carrying more risk in a rising market, not from skill.</p></div>
+</section>
+
+<section id="test2">
+  <div class="stage"><span class="n">5</span><h2>Test 2: can it pick which stocks will do better?</h2></div>
+  <p>Every trading day from November 2024 to April 2026, Kronos ranked about 500 of Japan's largest companies by expected return over the next 5 or 12 days. We tested six ways of reading its forecasts. To pass, a version had to add information beyond simple price rules, make money after costs once we discounted for trying six versions, avoid being one lucky streak, and work in most months.</p>
+  <div class="panel">
+    <h3>Its top picks against the average stock</h3>
+    <p class="note">Extra return per year from holding Kronos's top fifth of stocks instead of all of them, after 10 bp trading costs.</p>
+    <div class="chart" id="h1Bars"></div>
+  </div>
+  <div class="panel">
+    <h3>Day by day</h3>
+    <div class="toggles" id="h1Pick" role="radiogroup" aria-label="Kronos version"></div>
+    <div class="cols">
+      <div><p class="note">Daily ranking score (rank IC). Above zero means its ranking matched what happened.</p><div class="chart" id="icChart"></div></div>
+      <div><p class="note">¥100 in its top picks against ¥100 spread over all stocks, after costs.</p><div class="chart" id="cumChart"></div></div>
+    </div>
+  </div>
+  <div class="verdict"><p><b>Failed.</b> Its ranking scores averaged between −0.001 and +0.008, nowhere near significant, although the test could detect scores down to about 0.01 to 0.03. It added nothing beyond simple price rules. Five of six versions lost to simply holding every stock, and the best one broke even. That matches an independent test on US stocks.</p></div>
+  <details><summary>All six versions, as a table</summary><div class="tablewrap" id="h1Table"></div></details>
+</section>
+
+<section id="meaning">
+  <div class="stage"><span class="n">6</span><h2>What this does and does not show</h2></div>
+  <div class="cols">
+    <div class="panel"><h3>What it shows</h3><p>Used out of the box on daily candles, Kronos-small gave a trader nothing usable on Japanese large caps or the Nikkei between mid-2024 and April 2026. Simple formulas forecast risk better, and its stock rankings were noise once costs were counted.</p></div>
+    <div class="panel"><h3>What it does not show</h3><p>We tested the small model without fine-tuning, on daily bars, over about 18 months, through a free data plan. A fine-tuned or larger model, intraday data, or other markets could behave differently. The sealed final exam was never opened, because nothing passed.</p></div>
+  </div>
+</section>
+
+<section id="reproduce">
+  <div class="stage"><span class="n">7</span><h2>Reproduce it</h2></div>
+  <p>Everything except the licensed market data is in the repository. You need Python 3.12 with uv, a free J-Quants account, and a Kaggle account with GPU access. Each step below writes files that the next step checks.</p>
+  <ol class="steps">
+    <li><b>Set up and run the tests</b><pre>git clone https://github.com/SIMETRAL55/kronos-zero-shot-japan
+cd kronos-zero-shot-japan
+uv sync && bash scripts/fetch_kronos.sh && uv run pytest</pre></li>
+    <li><b>Fetch the data</b><pre>uv run python scripts/fetch_dev_data.py nikkei
+uv run python scripts/fetch_dev_data.py jquants --free   # needs JQUANTS_API_KEY in ~/.config/kronos-explore/jquants.env</pre></li>
+    <li><b>Run the forecasts on Kaggle's free GPUs</b><pre>export KAGGLE_USERNAME=your-name
+uv run python scripts/push_h2_dev.py                   # H2, about 12 minutes
+uv run python scripts/build_h1_windows.py && uv run python scripts/kaggle_dataset.py create
+# then the five H1 jobs listed in README.md, about 23 GPU-hours</pre></li>
+    <li><b>Grade, in the pre-registered order</b><pre>uv run python scripts/eval_h2.py h2dev
+uv run python scripts/eval_h1.py costs && uv run python scripts/eval_h1.py p5 && uv run python scripts/eval_h1.py dev</pre></li>
+  </ol>
+  <p class="note">The free plan's two-year window moves forward every day, so an exact rerun of our dates now needs one month of the Light plan. A rerun on your current free window tests the same idea on slightly different dates.</p>
+</section>
+
+<section id="words">
+  <div class="stage"><span class="n">8</span><h2>Words used on this page</h2></div>
+  <div class="panel"><dl class="gloss">
+    <dt>Pre-registration</dt><dd>Writing down the rules and pass marks before seeing any results, so nobody can quietly change them.</dd>
+    <dt>Sealed final exam</dt><dd>Months kept locked and used only once at the end, to confirm a pass.</dd>
+    <dt>Rank IC</dt><dd>How well a day's ranking of stocks matches the ranking of what they actually returned. 0 is no skill, 1 is perfect.</dd>
+    <dt>Volatility</dt><dd>How wildly prices swing. About 20% a year is normal for the Nikkei.</dd>
+    <dt>HAR, GARCH, EWMA</dt><dd>Free textbook formulas that predict future swings from recent swings.</dd>
+    <dt>Placebo test</dt><dd>Running the exam on fake or scrambled data where the right answer is "nothing", to prove the exam isn't fooling us.</dd>
+    <dt>Basis point</dt><dd>One hundredth of a percent. 10 bp on ¥1,000,000 is ¥1,000.</dd>
+  </dl></div>
+</section>
+
+<footer>Built from the committed results by <code>report/build_report.py</code>. Kronos is by Shi et al. (MIT licence). Stock data from J-Quants (JPX) and Nikkei 225 data are not redistributed here, except 25 short Nikkei windows in the forecast chart.</footer>
+</div>
+
+<script id="kdata" type="application/json">/*DATA*/</script>
+<script>
+(function(){
+const D = JSON.parse(document.getElementById('kdata').textContent);
+const NS = 'http://www.w3.org/2000/svg';
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function el(tag, attrs, parent){ const e = document.createElementNS(NS, tag); for (const k in attrs||{}) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function h(tag, attrs, html){ const e = document.createElement(tag); for (const k in attrs||{}) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; }
+function lin(d0,d1,r0,r1){ return v => r0 + (v-d0)/(d1-d0||1)*(r1-r0); }
+function ticks(min,max,n){ const span=(max-min)||1, s0=Math.pow(10,Math.floor(Math.log10(span/n))), e=span/n/s0;
+  const st=s0*(e>=7.5?10:e>=3.5?5:e>=1.5?2:1), out=[]; for(let v=Math.ceil(min/st)*st; v<=max+st*1e-6; v+=st) out.push(+v.toFixed(8)); return out; }
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtD = s => { const [y,m,d] = s.split('-'); return `${+d} ${MON[+m-1]} ${y}`; };
+const fmtM = s => { const [y,m] = s.split('-'); return `${MON[+m-1]} ${y.slice(2)}`; };
+const yen = v => (v<0?'−':'') + '¥' + Math.abs(Math.round(v)).toLocaleString('en-US');
+const pct = (v, d) => (v>0?'+':v<0?'−':'') + Math.abs(v).toFixed(d==null?1:d) + '%';
+function width(node){ return Math.max(280, Math.round(node.clientWidth || 600)); }
+function tipAt(box, x, y, html){ let t = box.querySelector('.tip'); if (!t){ t = h('div',{class:'tip'}); box.appendChild(t); }
+  t.innerHTML = html; t.hidden = false; const bw = box.clientWidth, tw = t.offsetWidth;
+  t.style.left = Math.min(Math.max(0, x + 14), bw - tw) + 'px'; t.style.top = Math.max(0, y - 10) + 'px'; }
+function tipOff(box){ const t = box.querySelector('.tip'); if (t) t.hidden = true; }
+function txt(svg, x, y, s, o){ o = o || {}; const t = el('text',{x, y, 'text-anchor':o.a||'start', fill:o.c||tok('--muted'), 'font-size':o.size||11,
+  'font-family': o.body ? 'Instrument Sans, system-ui, sans-serif' : 'JetBrains Mono, ui-monospace, monospace'}, svg); t.textContent = s; return t; }
+function legend(node, items){ node.innerHTML = items.map(i => `<span><i class="sw" style="background:${i.c}"></i>${i.l}</span>`).join(''); }
+
+/* theme toggle: auto -> light -> dark */
+const themeBtn = document.getElementById('themeBtn'), MODES = ['auto','light','dark'];
+let mode = 'auto'; try { mode = localStorage.getItem('kronos-theme') || 'auto'; } catch(e) {}
+function applyTheme(){ if (mode === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', mode);
+  themeBtn.textContent = 'Theme: ' + mode; }
+themeBtn.onclick = () => { mode = MODES[(MODES.indexOf(mode)+1) % 3]; try { localStorage.setItem('kronos-theme', mode); } catch(e) {} applyTheme(); };
+applyTheme();
+
+/* 1. fan chart */
+let ex = Math.max(0, D.examples.findIndex(e => e.date === '2024-08-02'));
+const slider = document.getElementById('exSlider'); slider.max = D.examples.length - 1; slider.value = ex;
+function drawFan(){
+  const box = document.getElementById('fan'), E = D.examples[ex], W = width(box), H = Math.round(Math.min(380, W*0.55)), m = {l:58, r:118, t:16, b:30};
+  box.innerHTML = ''; const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':`Kronos forecast fan for ${fmtD(E.date)}`}, box);
+  const k0 = E.hist.length - 1, n = E.hist.length + E.real.length, all = E.hist.concat(E.real).concat(...E.paths).concat(E.mean);
+  const lo = Math.min(...all), hi = Math.max(...all), pad = (hi-lo)*0.06, x = lin(0, n-1, m.l, W-m.r), y = lin(lo-pad, hi+pad, H-m.b, m.t);
+  for (const v of ticks(lo-pad, hi+pad, 5)){ el('line',{x1:m.l, x2:W-m.r, y1:y(v), y2:y(v), stroke:tok('--rule')}, svg); txt(svg, m.l-8, y(v)+4, Math.round(v).toLocaleString('en-US'), {a:'end'}); }
+  el('rect',{x:x(k0), y:m.t, width:x(n-1)-x(k0), height:H-m.b-m.t, fill:tok('--panel-2')}, svg);
+  el('line',{x1:x(k0), x2:x(k0), y1:m.t, y2:H-m.b, stroke:tok('--muted'), 'stroke-dasharray':'3 3'}, svg);
+  txt(svg, x(k0)-6, H-10, 'forecast made', {a:'end'}); txt(svg, x(n-1), H-10, '12 days later', {a:'end'});
+  const P = (arr, off) => arr.map((v,i) => `${i?'L':'M'}${x(i+off).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  for (const p of E.paths) el('path',{d:P([E.hist[k0]].concat(p), k0), fill:'none', stroke:tok('--s2'), 'stroke-width':1, 'stroke-opacity':0.16}, svg);
+  el('path',{d:P(E.hist,0), fill:'none', stroke:tok('--hist'), 'stroke-width':2}, svg);
+  el('path',{d:P([E.hist[k0]].concat(E.mean), k0), fill:'none', stroke:tok('--s2'), 'stroke-width':2.5}, svg);
+  el('path',{d:P([E.hist[k0]].concat(E.real), k0), fill:'none', stroke:tok('--truth'), 'stroke-width':2.5}, svg);
+  let yr = y(E.real[E.real.length-1]), ym = y(E.mean[E.mean.length-1]);
+  if (Math.abs(yr-ym) < 16){ const mid = (yr+ym)/2; yr = mid + (yr>=ym?9:-9); ym = mid + (yr>=ym?-9:9); }
+  [[yr, 'what happened', tok('--truth'), E.real[E.real.length-1]], [ym, 'Kronos average', tok('--s2'), E.mean[E.mean.length-1]]].forEach(([ly, s, c, v]) => {
+    el('circle',{cx:x(n-1), cy:y(v), r:4, fill:c, stroke:tok('--panel'), 'stroke-width':2}, svg); txt(svg, x(n-1)+8, ly+4, s, {c:tok('--ink'), size:12, body:true}); });
+  const dates = E.hist_dates.concat(E.fut_dates);
+  const hit = el('rect',{x:m.l, y:m.t, width:W-m.l-m.r, height:H-m.t-m.b, fill:'transparent'}, svg);
+  const cross = el('line',{y1:m.t, y2:H-m.b, stroke:tok('--muted'), visibility:'hidden'}, svg);
+  hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(n-1, Math.round((px - m.l) / ((W-m.l-m.r)/(n-1))))); cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility','visible');
+    let s = `<div class="row"><b>${fmtD(dates[i])}</b></div>`;
+    if (i <= k0) s += `<div class="row"><span class="k"><i class="sw" style="background:${tok('--hist')}"></i>price</span><span class="num">${E.hist[i].toLocaleString('en-US')}</span></div>`;
+    else { const j = i - k0 - 1, col = E.paths.map(p => p[j]).sort((a,b)=>a-b);
+      s += `<div class="row"><span class="k"><i class="sw" style="background:${tok('--truth')}"></i>actual</span><span class="num">${E.real[j].toLocaleString('en-US')}</span></div>
+        <div class="row"><span class="k"><i class="sw" style="background:${tok('--s2')}"></i>Kronos avg</span><span class="num">${E.mean[j].toLocaleString('en-US')}</span></div>
+        <div class="row"><span class="k">Kronos range</span><span class="num">${col[0].toLocaleString('en-US')}–${col[col.length-1].toLocaleString('en-US')}</span></div>`; }
+    tipAt(box, ev.clientX - r.left, ev.clientY - r.top, s); });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility','hidden'); tipOff(box); });
+  document.getElementById('exDate').textContent = fmtD(E.date);
+  const inside = E.real.filter((v,j) => { const c = E.paths.map(p => p[j]); return v >= Math.min(...c) && v <= Math.max(...c); }).length;
+  document.getElementById('fanRead').innerHTML = [['Kronos expected swing', E.vol.kronos + '%'], ['Simple formula expected', E.vol.har + '%'], ['Actual swing', E.vol.real + '%'], ['Days inside Kronos’s fan', `${inside} of ${E.real.length}`]]
+    .map(([l,v]) => `<div class="ro"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+let timer = null;
+function setEx(i){ ex = (i + D.examples.length) % D.examples.length; slider.value = ex; drawFan(); }
+slider.addEventListener('input', () => setEx(+slider.value));
+document.getElementById('prevEx').onclick = () => setEx(ex-1);
+document.getElementById('nextEx').onclick = () => setEx(ex+1);
+const play = document.getElementById('playEx');
+play.onclick = () => { if (timer){ clearInterval(timer); timer = null; play.textContent = 'Play'; return; } play.textContent = 'Pause'; timer = setInterval(() => setEx(ex+1), reduce ? 2600 : 1500); };
+
+/* 2. flow + timeline */
+const STEPS = [
+  {t:'Pick the markets', s:'done', d:'We compared Japanese stocks, Nikkei futures, FX and US stocks on trading costs, capital needed, data and tax, and chose Tokyo large caps (what to buy) and the Nikkei 225 (how much to bet).'},
+  {t:'Lock the rules', s:'done', d:'Every hypothesis, signal, baseline, pass mark and stop rule went into PREREG.md and was committed before any test data was downloaded. One later amendment, to use the free data plan, was also made before that data was opened.'},
+  {t:'Test the tester', s:'done', d:'We checked the grading code on fake data where the answer is known in advance: random prices must score zero, and a planted signal must be found. Both passed.'},
+  {t:'Test 1: volatility', s:'fail', d:'Kronos tried to forecast how rough the Nikkei would get. It lost to simple formulas, so this test stopped at the development stage.'},
+  {t:'Test 2: stock picks', s:'fail', d:'Kronos ranked about 500 Japanese stocks every day for 343 days. Its picks did no better than holding every stock, so this test stopped too.'},
+  {t:'Sealed final exam', s:'skip', d:'Only a pass would have opened the sealed months of May to October 2026. Nothing passed, so they stay unopened.'}];
+const SLAB = {done:['✓ done','good'], fail:['✕ failed','bad'], skip:['○ never opened','']};
+const flow = document.getElementById('flow');
+STEPS.forEach((st, i) => { const li = h('li'), b = h('button',{role:'tab','aria-selected': i===4?'true':'false'},
+  `<span class="fn">Step ${i+1}</span><span class="ft">${st.t}</span><span class="fs ${SLAB[st.s][1]}"><span class="mark">${SLAB[st.s][0]}</span></span>`);
+  b.onclick = () => { flow.querySelectorAll('button').forEach(x => x.setAttribute('aria-selected','false')); b.setAttribute('aria-selected','true'); showStep(i); };
+  li.appendChild(b); flow.appendChild(li); });
+function showStep(i){ document.getElementById('flowDetail').innerHTML = `<p><b>Step ${i+1}: ${STEPS[i].t}.</b> ${STEPS[i].d}</p>`; }
+showStep(4);
+const SEG = [
+  {lane:0, a:'2020-01-31', b:'2024-06-30', c:'--hist', l:'Kronos learned from Japanese prices', d:'Kronos was trained on Japanese charts up to June 2024. Testing on these months would be grading a student on questions they have already seen.'},
+  {lane:1, a:'2024-07-01', b:'2026-04-30', c:'--s1', l:'Test 1 window (Nikkei volatility)', d:'435 trading days, July 2024 to April 2026, all after Kronos stopped learning.'},
+  {lane:2, a:'2024-11-14', b:'2026-04-30', c:'--s2', l:'Test 2 window (stock picks)', d:'343 trading days from November 2024. It starts later because the free data plan reaches back only two years.'},
+  {lane:3, a:'2026-05-01', b:'2026-10-31', c:'--s3', l:'Sealed final exam', d:'May to October 2026. To be opened once, and only if Kronos passed. It never did.'}];
+function drawTimeline(){
+  const box = document.getElementById('timeline'), W = width(box), H = 176, m = {l:12, r:12, t:12, b:28}; box.innerHTML = '';
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Which months are used for what'}, box);
+  const T = s => new Date(s+'T00:00:00Z').getTime(), x = lin(T('2020-01-01'), T('2026-12-31'), m.l, W-m.r), lane = i => m.t + i*32;
+  for (let yr = 2020; yr <= 2026; yr++){ const px = x(T(`${yr}-01-01`)); el('line',{x1:px, x2:px, y1:m.t, y2:H-m.b, stroke:tok('--rule')}, svg); txt(svg, px+3, H-10, String(yr)); }
+  SEG.forEach(sg => { const r = el('rect',{x:x(T(sg.a)), y:lane(sg.lane), width:Math.max(4, x(T(sg.b))-x(T(sg.a))), height:22, rx:4, fill:tok(sg.c), tabindex:0, role:'button', 'aria-label':sg.l}, svg);
+    txt(svg, x(T(sg.a)) + (sg.lane===0?8:-6), lane(sg.lane)+15, sg.l, {a: sg.lane===0?'start':'end', c: sg.lane===0 ? tok('--panel') : tok('--ink'), size:12, body:true});
+    const show = () => { document.getElementById('tlNote').textContent = sg.d; r.setAttribute('stroke', tok('--ink')); r.setAttribute('stroke-width', 2); };
+    const hide = () => r.removeAttribute('stroke');
+    r.addEventListener('pointerenter', show); r.addEventListener('focus', show); r.addEventListener('click', show); r.addEventListener('pointerleave', hide); r.addEventListener('blur', hide); });
+}
+
+/* 3. checks, costs, P5 */
+function dotRows(box, rows, xr, aria, opts){
+  opts = opts || {}; const W = width(box), m = {l:opts.l||170, r:24, t:14, b:28}, H = m.t + m.b + rows.length*(opts.rowH||42); box.innerHTML = '';
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':aria}, box), x = lin(xr[0], xr[1], m.l, W-m.r);
+  for (const v of ticks(xr[0], xr[1], 5)){ el('line',{x1:x(v), x2:x(v), y1:m.t, y2:H-m.b, stroke: Math.abs(v)<1e-12 ? tok('--muted') : tok('--rule'), 'stroke-width': Math.abs(v)<1e-12 ? 1.5 : 1}, svg); txt(svg, x(v), H-10, v.toFixed(2), {a:'middle'}); }
+  rows.forEach((r, i) => { const y0 = m.t + 20 + i*(opts.rowH||42);
+    txt(svg, m.l-12, y0+4 + (r.dots.length>1?6:0), r.l, {a:'end', c:tok('--ink'), size:12, body:true});
+    r.dots.forEach((d, j) => { const y = y0 + j*12;
+      el('line',{x1:x(d.v-2*d.se), x2:x(d.v+2*d.se), y1:y, y2:y, stroke:tok('--ink-2'), 'stroke-width':2}, svg);
+      el('circle',{cx:x(d.v), cy:y, r:5.5, fill:d.c, stroke:tok('--panel'), 'stroke-width':2}, svg);
+      if (opts.labels) txt(svg, x(d.v), y-10, d.v.toFixed(3), {a:'middle', c:tok('--ink')}); }); });
+}
+function drawChecks(){ const C = D.checks;
+  dotRows(document.getElementById('checkChart'), [{l:'Random fake prices', dots:[{v:C.p4_mean_ic, se:C.p4_se, c:tok('--accent')}]},
+    {l:'Hidden signal of 0.05', dots:[{v:C.p6_mean_ic, se:C.p6_se, c:tok('--accent')}]}], [-0.03, 0.08], 'Placebo and planted-signal checks', {labels:true, l:150}); }
+function drawP5(){ const P = D.h1.p5, names = Object.keys(P);
+  legend(document.getElementById('p5Legend'), [{c:tok('--s3'), l:'Scramble dates (as pre-registered)'}, {c:tok('--s1'), l:'Scramble stocks (true no-signal test)'}]);
+  dotRows(document.getElementById('p5Chart'), names.map(k => ({l:vname(k), dots:[{v:P[k].date_mean, se:P[k].date_se, c:tok('--s3')}, {v:P[k].stock_mean, se:P[k].stock_se, c:tok('--s1')}]})),
+    [-0.07, 0.03], 'Two placebo designs per Kronos version', {rowH:34, l:190}); }
+function drawCosts(){
+  const C = D.costs, box = document.getElementById('costChart'), W = width(box), m = {l:170, r:56, t:10, b:26};
+  const rows = [{l:'One price step (minimum)', v:C.tick1}, {l:'Our assumption', v:C.prereg, hi:true}, {l:'Two price steps (realistic)', v:C.tick2}, {l:'Noisy daily estimate', v:C.ar_median, faint:true}];
+  const H = m.t + m.b + rows.length*34; box.innerHTML = '';
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Round-trip cost estimates in basis points'}, box), x = lin(0, 40, m.l, W-m.r);
+  for (const v of [0,10,20,30,40]){ el('line',{x1:x(v), x2:x(v), y1:m.t, y2:H-m.b, stroke:tok('--rule')}, svg); txt(svg, x(v), H-8, v+' bp', {a:'middle'}); }
+  rows.forEach((r, i) => { const y = m.t + i*34 + 6; txt(svg, m.l-10, y+14, r.l, {a:'end', c:tok('--ink'), size:12, body:true});
+    el('rect',{x:x(0), y, width:Math.max(2, x(r.v)-x(0)), height:20, rx:4, fill: r.hi ? tok('--accent') : tok('--hist'), 'fill-opacity': r.faint ? 0.45 : 1}, svg);
+    txt(svg, x(r.v)+6, y+14, r.v.toFixed(1), {c:tok('--ink')}); });
+  el('line',{x1:x(15), x2:x(15), y1:m.t-4, y2:H-m.b, stroke:tok('--bad'), 'stroke-dasharray':'4 3', 'stroke-width':1.5}, svg);
+  txt(svg, x(15)+4, m.t+4, 'change if above 15', {c:tok('--bad')});
+}
+
+/* shared line chart */
+function lineChart(box, cfg){
+  const W = width(box), H = cfg.H || Math.round(Math.min(360, W*0.5)), m = {l:52, r:cfg.r||120, t:14, b:28}; box.innerHTML = '';
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':cfg.aria}, box), n = cfg.dates.length;
+  const vals = cfg.series.flatMap(s => s.values.filter(v => v != null)), lo0 = Math.min(cfg.min ?? Infinity, ...vals), hi0 = Math.max(...vals), padv = (hi0-lo0)*0.04;
+  const lo = cfg.min != null ? lo0 : lo0 - padv, hi = hi0 + padv, x = lin(0, n-1, m.l, W-m.r), y = lin(lo, hi, H-m.b, m.t);
+  for (const v of ticks(lo, hi, 5)){ el('line',{x1:m.l, x2:W-m.r, y1:y(v), y2:y(v), stroke: (cfg.zero && Math.abs(v)<1e-12) ? tok('--muted') : tok('--rule')}, svg); txt(svg, m.l-6, y(v)+4, cfg.yfmt(v), {a:'end'}); }
+  let lastM = ''; cfg.dates.forEach((d, i) => { const ym = d.slice(0,7); if (ym !== lastM && (+d.slice(5,7)) % 3 === 1){ txt(svg, x(i), H-8, fmtM(d), {a:'middle'}); el('line',{x1:x(i), x2:x(i), y1:H-m.b, y2:H-m.b+4, stroke:tok('--muted')}, svg); } lastM = ym; });
+  (cfg.notes||[]).forEach(nt => { const i = cfg.dates.indexOf(nt.date); if (i < 0) return; el('line',{x1:x(i), x2:x(i), y1:m.t, y2:H-m.b, stroke:tok('--muted'), 'stroke-dasharray':'2 3'}, svg); txt(svg, x(i)+5, m.t+10, nt.text, {c:tok('--ink-2'), body:true}); });
+  const labels = [];
+  cfg.series.forEach(s => { let d = ''; s.values.forEach((v, i) => { if (v == null) return; d += `${d?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
+    el('path',{d, fill:'none', stroke:tok(s.c), 'stroke-width':s.w||2, 'stroke-opacity':s.op||1, 'stroke-linejoin':'round'}, svg);
+    if (s.nolabel) return; let li = s.values.length-1; while (li > 0 && s.values[li] == null) li--; labels.push({y:y(s.values[li]), txt:s.short||s.l, c:tok(s.c)}); });
+  labels.sort((a,b) => a.y-b.y); for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i-1].y < 14) labels[i].y = labels[i-1].y + 14;
+  labels.forEach(lb => { el('circle',{cx:W-m.r, cy:lb.y, r:3.5, fill:lb.c}, svg); txt(svg, W-m.r+8, lb.y+4, lb.txt, {c:tok('--ink'), size:11.5, body:true}); });
+  const hit = el('rect',{x:m.l, y:m.t, width:W-m.l-m.r, height:H-m.t-m.b, fill:'transparent'}, svg);
+  const cross = el('line',{y1:m.t, y2:H-m.b, stroke:tok('--muted'), visibility:'hidden'}, svg);
+  const dots = cfg.series.map(s => el('circle',{r:4, fill:tok(s.c), stroke:tok('--panel'), 'stroke-width':2, visibility:'hidden'}, svg));
+  hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(n-1, Math.round((px - m.l) / ((W-m.l-m.r)/(n-1))))); cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility','visible');
+    cfg.series.forEach((s, k) => { const v = s.values[i]; dots[k].setAttribute('visibility', v == null ? 'hidden' : 'visible'); if (v != null){ dots[k].setAttribute('cx', x(i)); dots[k].setAttribute('cy', y(v)); } });
+    tipAt(box, ev.clientX - r.left, ev.clientY - r.top, `<div class="row"><b>${fmtD(cfg.dates[i])}</b></div>` + cfg.series.map(s => `<div class="row"><span class="k"><i class="sw" style="background:${tok(s.c)}"></i>${s.short||s.l}</span><span class="num">${s.values[i]==null?'–':cfg.vfmt(s.values[i])}</span></div>`).join('')); });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility','hidden'); dots.forEach(d => d.setAttribute('visibility','hidden')); tipOff(box); });
+}
+
+/* 4. test 1 */
+const VS = [{k:'real', l:'What actually happened', s:'Actual', c:'--truth', w:2.5}, {k:'V1', l:'Kronos', s:'Kronos', c:'--s2'}, {k:'HAR', l:'Formula: HAR', s:'HAR', c:'--s1'}, {k:'GARCH', l:'Formula: GARCH', s:'GARCH', c:'--s3'}];
+const vOn = {real:true, V1:true, HAR:true, GARCH:false}, tgl = document.getElementById('volToggles');
+VS.forEach(s => { const b = h('button',{class:'tg', 'aria-pressed':String(vOn[s.k])}, `<i class="sw" style="background:var(${s.c})"></i>${s.l}`); b.onclick = () => { vOn[s.k] = !vOn[s.k]; b.setAttribute('aria-pressed', String(vOn[s.k])); drawVol(); }; tgl.appendChild(b); });
+function drawVol(){ lineChart(document.getElementById('volChart'), {dates:D.vol.dates, aria:'Predicted versus actual Nikkei volatility', min:0,
+  series: VS.filter(s => vOn[s.k]).map(s => ({...s, short:s.s, values:D.vol[s.k]})), yfmt: v => v + '%', vfmt: v => v.toFixed(1) + '%', notes:[{date:'2024-08-02', text:'Aug 2024 crash ahead'}]}); }
+function drawScore(){
+  const Q = D.qlike, box = document.getElementById('scoreChart'), W = width(box), m = {l:150, r:24, t:6, b:26}, cap = 2;
+  const rows = [['GARCH','Formula: GARCH','--s1'], ['HAR','Formula: HAR','--s1'], ['EWMA','Formula: EWMA','--s1'], ['V1','Kronos (main)','--s2'], ['V2','Kronos (path spread)','--s2']];
+  const H = m.t + m.b + rows.length*32; box.innerHTML = ''; const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Forecast error scoreboard, lower is better'}, box), x = lin(0, cap, m.l, W-m.r);
+  for (const v of [0, .5, 1, 1.5, 2]){ el('line',{x1:x(v), x2:x(v), y1:m.t, y2:H-m.b, stroke:tok('--rule')}, svg); txt(svg, x(v), H-8, v.toFixed(1), {a:'middle'}); }
+  rows.forEach(([k, l, c], i) => { const v = Q[k], y = m.t + i*32 + 5, off = v > cap; txt(svg, m.l-10, y+14, l, {a:'end', c:tok('--ink'), size:12, body:true});
+    el('rect',{x:x(0), y, width:x(Math.min(v, cap))-x(0), height:20, rx:4, fill:tok(c)}, svg);
+    if (off) txt(svg, x(cap)-6, y+14, v.toFixed(2) + ' (off scale)', {a:'end', c:tok('--panel')}); else txt(svg, x(v)+6, y+14, v.toFixed(3), {c:tok('--ink')}); });
+}
+const EQ = [{k:'kronos_V1', l:'Sized by Kronos', s:'Kronos', c:'--s2'}, {k:'HAR', l:'Sized by HAR', s:'HAR', c:'--s1'}, {k:'constant_1', l:'Always 1 contract', s:'Always 1', c:'--s3'}];
+function drawEq(){ legend(document.getElementById('eqLegend'), EQ.map(e => ({c:tok(e.c), l:e.l})));
+  lineChart(document.getElementById('eqChart'), {dates:D.vol.dates, aria:'Profit from sizing by each forecast', r:84, H:260, zero:true,
+    series: EQ.map(e => ({k:e.k, l:e.l, short:e.s, c:e.c, values:D.sizing[e.k].equity_k.map(v => +(v - 1000).toFixed(1))})),
+    yfmt: v => (v>0?'+':'') + v + 'k', vfmt: v => (v>0?'+':v<0?'−':'') + '¥' + Math.abs(v).toFixed(1) + 'k'}); }
+
+/* 5. test 2 */
+const VN = {K1:'Average guess', K2:'Share of guesses rising', K3:'Guess strength'};
+function vname(k){ const [kk, hh] = k.split('_h'); return `${VN[kk]}, ${hh} days`; }
+const H1V = D.h1.variants, H1N = Object.keys(H1V);
+let pick = 'K1_h12';
+function drawH1Bars(){
+  const box = document.getElementById('h1Bars'), W = width(box), m = {l:200, r:24, t:6, b:26}, H = m.t + m.b + H1N.length*32; box.innerHTML = '';
+  const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Extra return per year of Kronos top picks after costs'}, box), x = lin(-7, 1.5, m.l, W-m.r);
+  for (const v of [-6, -4, -2, 0]){ el('line',{x1:x(v), x2:x(v), y1:m.t, y2:H-m.b, stroke: v===0 ? tok('--muted') : tok('--rule'), 'stroke-width': v===0 ? 1.5 : 1}, svg); txt(svg, x(v), H-8, v + '%', {a:'middle'}); }
+  H1N.forEach((k, i) => { const v = H1V[k].excess_ann_by_cost_bp['10'] * 100, y = m.t + i*32 + 5;
+    txt(svg, m.l-10, y+14, vname(k), {a:'end', c:tok('--ink'), size:12, body:true});
+    el('rect',{x:x(Math.min(0, v)), y, width:Math.max(2, Math.abs(x(v)-x(0))), height:20, rx:4, fill:tok('--s2')}, svg);
+    txt(svg, Math.max(x(v), x(0)) + 6, y+14, pct(v, Math.abs(v) < 0.5 ? 2 : 1), {c:tok('--ink')}); });
+}
+const pickBox = document.getElementById('h1Pick');
+H1N.forEach(k => { const b = h('button',{class:'tg', role:'radio', 'aria-checked': String(k===pick), 'aria-pressed': String(k===pick)}, vname(k));
+  b.onclick = () => { pick = k; pickBox.querySelectorAll('button').forEach(x => { x.setAttribute('aria-checked','false'); x.setAttribute('aria-pressed','false'); }); b.setAttribute('aria-checked','true'); b.setAttribute('aria-pressed','true'); drawDaily(); };
+  pickBox.appendChild(b); });
+function drawDaily(){
+  const S = D.h1.series, V = S.variants[pick], ic = V.rank_ic, avg = [], win = [];
+  ic.forEach(v => { if (v != null){ win.push(v); if (win.length > 20) win.shift(); } avg.push(v == null || win.length < 20 ? null : win.reduce((a,b)=>a+b,0)/win.length); });
+  lineChart(document.getElementById('icChart'), {dates:S.dates, aria:'Daily rank IC', r:70, H:240, zero:true,
+    series:[{l:'Daily score', short:'daily', c:'--hist', w:1, op:0.55, values:ic, nolabel:true}, {l:'20-day average', short:'20-day avg', c:'--s2', w:2.5, values:avg}],
+    yfmt: v => v.toFixed(2), vfmt: v => v.toFixed(3)});
+  const cum = (rs) => { let g = 100, started = false; return rs.map(r => { if (r == null) return started ? +g.toFixed(2) : null; started = true; g *= 1 + r; return +g.toFixed(2); }); };
+  lineChart(document.getElementById('cumChart'), {dates:S.dates, aria:'Growth of 100 yen: Kronos top picks versus all stocks', r:80, H:240,
+    series:[{l:'Kronos top picks', short:'Top picks', c:'--s2', values:cum(V.portfolio_10bp)}, {l:'All stocks', short:'All stocks', c:'--s1', values:cum(V.benchmark)}],
+    yfmt: v => '¥' + v.toFixed(0), vfmt: v => '¥' + v.toFixed(1)});
+}
+function h1Table(){
+  document.getElementById('h1Table').innerHTML = `<table><thead><tr><th>Version</th><th class="num">Mean rank IC</th><th class="num">t</th><th class="num">Beyond simple rules (t, needs ≥ 3)</th><th class="num">Excess/yr after 10 bp</th><th class="num">Deflated Sharpe (needs ≥ 0.95)</th><th class="num">Months above 0</th></tr></thead><tbody>
+    ${H1N.map(k => { const v = H1V[k]; return `<tr><td>${vname(k)}</td><td class="num">${v.mean_ic.toFixed(4)}</td><td class="num">${v.ic_nw_t.toFixed(2)}</td><td class="num">${v.fm_t.toFixed(2)}</td><td class="num">${pct(v.excess_ann_by_cost_bp['10']*100, 2)}</td><td class="num">${v.dsr.toFixed(3)}</td><td class="num">${Math.round(v.monthly_pos_share*100)}%</td></tr>`; }).join('')}</tbody></table>
+    <p class="note">Probability of backtest overfitting across the six versions: ${D.h1.pbo.toFixed(2)}. The momentum control had enough history for ${Math.round(D.h1.b3_coverage*100)}% of stock-days.</p>`;
+}
+
+/* render, and keep in sync with size and theme */
+legend(document.getElementById('fanLegend'), [{c:tok('--hist'), l:'Past 40 days'}, {c:tok('--s2'), l:'Kronos guesses (50 of 100 shown) and their average'}, {c:tok('--truth'), l:'What really happened'}]);
+function renderAll(){ legend(document.getElementById('fanLegend'), [{c:tok('--hist'), l:'Past 40 days'}, {c:tok('--s2'), l:'Kronos guesses (50 of 100 shown) and their average'}, {c:tok('--truth'), l:'What really happened'}]);
+  drawFan(); drawTimeline(); drawChecks(); drawCosts(); drawP5(); drawVol(); drawScore(); drawEq(); drawH1Bars(); drawDaily(); }
+h1Table(); renderAll();
+let rt; const again = () => { clearTimeout(rt); rt = setTimeout(renderAll, 120); };
+new ResizeObserver(again).observe(document.querySelector('.wrap'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', again);
+new MutationObserver(again).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+})();
+</script>
+</body>
+</html>
