@@ -61,8 +61,8 @@ section{display:grid;gap:20px}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 .cols>*{min-width:0}
 .note{font-size:.9rem;color:var(--muted)}
-.verdict{border-left:4px solid var(--bad);padding:10px 14px;background:color-mix(in oklab,var(--bad) 7%,var(--panel));border-radius:0 8px 8px 0}
-.verdict.ok{border-left-color:var(--good);background:color-mix(in oklab,var(--good) 7%,var(--panel))}
+.verdict{border:1px solid color-mix(in oklab,var(--bad) 40%,var(--rule));padding:10px 14px;background:color-mix(in oklab,var(--bad) 7%,var(--panel));border-radius:8px}
+.verdict.ok{border-color:color-mix(in oklab,var(--good) 40%,var(--rule));background:color-mix(in oklab,var(--good) 7%,var(--panel))}
 .verdict p{color:var(--ink)}
 .chart{position:relative;width:100%}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
