@@ -416,10 +416,12 @@ function drawCosts(){
   const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Round-trip cost estimates in basis points'}, box), x = lin(0, 40, m.l, W-m.r);
   for (const v of [0,10,20,30,40]){ el('line',{x1:x(v), x2:x(v), y1:m.t, y2:H-m.b, stroke:tok('--rule')}, svg); txt(svg, x(v), H-8, v+' bp', {a:'middle'}); }
   rows.forEach((r, i) => { const y = m.t + i*34 + 6; txt(svg, m.l-10, y+14, r.l, {a:'end', c:tok('--ink'), size:12, body:true});
-    el('rect',{x:x(0), y, width:Math.max(2, x(r.v)-x(0)), height:20, rx:4, fill: r.hi ? tok('--accent') : tok('--hist'), 'fill-opacity': r.faint ? 0.45 : 1}, svg);
-    txt(svg, x(r.v)+6, y+14, r.v.toFixed(1), {c:tok('--ink')}); });
+    el('rect',{x:x(0), y, width:Math.max(2, x(r.v)-x(0)), height:20, rx:4, fill: r.hi ? tok('--accent') : tok('--hist'), 'fill-opacity': r.faint ? 0.45 : 1}, svg); });
   el('line',{x1:x(15), x2:x(15), y1:m.t-4, y2:H-m.b, stroke:tok('--bad'), 'stroke-dasharray':'4 3', 'stroke-width':1.5}, svg);
   txt(svg, x(15)+4, m.t+4, 'change if above 15', {c:tok('--bad')});
+  // value labels last, with a halo in the panel colour, so the 15 bp line never runs through them
+  rows.forEach((r, i) => { const t = txt(svg, x(r.v)+6, m.t + i*34 + 20, r.v.toFixed(1), {c:tok('--ink')});
+    t.setAttribute('stroke', tok('--panel')); t.setAttribute('stroke-width', 4); t.setAttribute('paint-order', 'stroke'); });
 }
 
 /* shared line chart */
